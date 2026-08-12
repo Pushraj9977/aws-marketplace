@@ -1,0 +1,376 @@
+[H[2J[3J[0;36m[1m  ╔══════════════════════════════════════════════════════════════╗
+  ║      AWS Full Resource Report — Frankfurt (eu-central-1)     ║
+  ║                 Generated: 2026-08-04 17:02:04               ║
+  ╚══════════════════════════════════════════════════════════════╝
+[0m
+  [1mAccount:[0m  215116348101
+  [1mIdentity:[0m arn:aws:iam::215116348101:user/Pushkar_ActiTest
+  [1mRegion:[0m   eu-central-1
+
+
+[1m[0;36m  ▶  Lambda Functions[0m
+  ────────────────────────────────────────────────────────────
+[0;32m[17:02:06][0m Fetching Lambda functions...
+  [1mFunction Name                                  Runtime         Memory    Timeout[0m
+  ─────────────────────────────────────────────────────────────────────────────────────
+  [0;32m✔[0m  act-secure-watcher-auth-3                      python3.11      256 MB    15s
+  [0;32m✔[0m  act-secure-watcher-connector-3                 python3.11      256 MB    30s
+  [0;32m✔[0m  act-secure-watcher-processor-3                 python3.11      512 MB    60s
+  [0;32m✔[0m  act-secure-watcher-report-delivery             python3.11      128 MB    30s
+  [0;32m✔[0m  act-secure-watcher-upload-3                    python3.11      512 MB    30s
+  [0;32m✔[0m  amplify-catalysthealthyag-UpdateRolesWithIDPFuncti-8QRghrN43vBy  nodejs22.x      128 MB    300s
+  [0;32m✔[0m  amplify-catalysthealthyag-UpdateRolesWithIDPFuncti-jPtFRz3jQTxS  nodejs22.x      128 MB    300s
+  [0;32m✔[0m  amplify-catalysthealthyag-UpdateRolesWithIDPFuncti-MylD3VKnyWY9  nodejs22.x      128 MB    300s
+  [0;32m✔[0m  backendApi-bernadene                           nodejs18.x      128 MB    25s
+  [0;32m✔[0m  backendApi-cinda                               nodejs18.x      128 MB    25s
+  [0;32m✔[0m  backendApi-dev                                 nodejs18.x      128 MB    25s
+  [0;32m✔[0m  bhaSession-bernadene                           nodejs18.x      128 MB    25s
+  [0;32m✔[0m  bhaSession-cinda                               nodejs18.x      128 MB    25s
+  [0;32m✔[0m  bhaSession-dev                                 nodejs18.x      128 MB    25s
+  [0;32m✔[0m  engageapi-bernadene                            nodejs18.x      128 MB    25s
+  [0;32m✔[0m  engageapi-cinda                                nodejs18.x      128 MB    25s
+  [0;32m✔[0m  engageapi-dev                                  nodejs18.x      128 MB    25s
+  [0;32m✔[0m  firebaseTrigger-bernadene                      nodejs18.x      128 MB    25s
+  [0;32m✔[0m  firebaseTrigger-cinda                          nodejs18.x      128 MB    25s
+  [0;32m✔[0m  firebaseTrigger-dev                            nodejs18.x      128 MB    25s
+  [0;32m✔[0m  health-api-fetch                               python3.12      128 MB    30s
+  [0;32m✔[0m  HealthApiLambda                                python3.12      128 MB    15s
+  [0;32m✔[0m  HealthIngestionLambda                          python3.12      128 MB    15s
+  [0;32m✔[0m  health-sqs-to-dynamo                           python3.12      128 MB    30s
+  [0;32m✔[0m  intern-saveData                                nodejs24.x      128 MB    303s
+  [0;32m✔[0m  MarketplaceSubscriberHandler                   nodejs20.x      128 MB    10s
+  [0;32m✔[0m  membershipScheduler-bernadene                  nodejs18.x      128 MB    25s
+  [0;32m✔[0m  membershipScheduler-cinda                      nodejs18.x      128 MB    25s
+  [0;32m✔[0m  membershipScheduler-dev                        nodejs18.x      128 MB    25s
+  [0;32m✔[0m  sendEventReminderNotification                  nodejs24.x      128 MB    3s
+  [0;32m✔[0m  staffApi-bernadene                             nodejs18.x      128 MB    300s
+  [0;32m✔[0m  staffApi-cinda                                 nodejs18.x      128 MB    25s
+  [0;32m✔[0m  staffApi-dev                                   nodejs18.x      128 MB    300s
+  [0;32m✔[0m  webhook-bernadene                              nodejs18.x      128 MB    25s
+  [0;32m✔[0m  webhook-cinda                                  nodejs18.x      128 MB    25s
+  [0;32m✔[0m  webhook-dev                                    nodejs18.x      128 MB    25s
+
+  [1mTotal Lambda Functions: [0;32m36[0m
+
+[1m[0;36m  ▶  DynamoDB Tables[0m
+  ────────────────────────────────────────────────────────────
+[0;32m[17:02:08][0m Fetching DynamoDB tables...
+  [1mTable Name                                          Status[0m
+  ─────────────────────────────────────────────────────────────────
+  [0;32m✔[0m  act-secure-parsed-reports                           [0;32mACTIVE[0m
+  [0;32m✔[0m  act-secure-parsed-reports-3                         [0;32mACTIVE[0m
+  [0;32m✔[0m  act-secure-report-delivery-logs-3                   [0;32mACTIVE[0m
+  [0;32m✔[0m  act-secure-watcher-report-delivery-logs             [0;32mACTIVE[0m
+  [0;32m✔[0m  act-secure-webhook-payloads                         [0;32mACTIVE[0m
+  [0;32m✔[0m  act-secure-webhook-payloads-3                       [0;32mACTIVE[0m
+  [0;32m✔[0m  act-store-customer-mapping                          [0;32mACTIVE[0m
+  [0;32m✔[0m  act-store-customer-mapping-3                        [0;32mACTIVE[0m
+  [0;32m✔[0m  Attend-3gqmivv4fje2zdutbvfdkgdrmm-dev               [0;32mACTIVE[0m
+  [0;32m✔[0m  Attend-uqcdlcixrfhpvlcslxgrpqvaz4-cinda             [0;32mACTIVE[0m
+  [0;32m✔[0m  Attend-uyxbz2ndazh7jjioeimk3ctuqq-bernadene         [0;32mACTIVE[0m
+  [0;32m✔[0m  AwsHealthEvents                                     [0;32mACTIVE[0m
+  [0;32m✔[0m  Catalyst_CompConfig                                 [0;32mACTIVE[0m
+  [0;32m✔[0m  CatalystEngageBHAResults                            [0;32mACTIVE[0m
+  [0;32m✔[0m  CatalystEngageContactUstable                        [0;32mACTIVE[0m
+  [0;32m✔[0m  catEncounter_Dashboard_MessageBoard                 [0;32mACTIVE[0m
+  [0;32m✔[0m  catEncounter_Event_Table                            [0;32mACTIVE[0m
+  [0;32m✔[0m  catEncounter_Membership_Table                       [0;32mACTIVE[0m
+  [0;32m✔[0m  CatEncounter_RecommendedEvent                       [0;32mACTIVE[0m
+  [0;32m✔[0m  catEncounter_StaffTable                             [0;32mACTIVE[0m
+  [0;32m✔[0m  CatEncounter_Users_Table                            [0;32mACTIVE[0m
+  [0;32m✔[0m  catEncourageStaffAssignments                        [0;32mACTIVE[0m
+  [0;32m✔[0m  CheckIn_Table                                       [0;32mACTIVE[0m
+  [0;32m✔[0m  Event_Landing_Notes                                 [0;32mACTIVE[0m
+  [0;32m✔[0m  FeelingMeter                                        [0;32mACTIVE[0m
+  [0;32m✔[0m  FibriCheck_Prescriptions_Table                      [0;32mACTIVE[0m
+  [0;32m✔[0m  FibriCheck_User_Table                               [0;32mACTIVE[0m
+  [0;32m✔[0m  HeartRhythm_Prescriptions_History_Table             [0;32mACTIVE[0m
+  [0;32m✔[0m  HeartRhythm_Prescriptions_Table                     [0;32mACTIVE[0m
+  [0;32m✔[0m  HeartRhythm_Results_Table                           [0;32mACTIVE[0m
+  [0;32m✔[0m  Heart_Rhythm_Transaction_Log                        [0;32mACTIVE[0m
+  [0;32m✔[0m  HeartRhythm_User_Table                              [0;32mACTIVE[0m
+  [0;32m✔[0m  LocalHealthEvents                                   [0;32mACTIVE[0m
+  [0;32m✔[0m  MarketplaceSubscribers                              [0;32mACTIVE[0m
+  [0;32m✔[0m  memberAssessments                                   [0;32mACTIVE[0m
+  [0;32m✔[0m  Member_Landing_Notes                                [0;32mACTIVE[0m
+  [0;32m✔[0m  memberPlans                                         [0;32mACTIVE[0m
+  [0;32m✔[0m  Messages-3gqmivv4fje2zdutbvfdkgdrmm-dev             [0;32mACTIVE[0m
+  [0;32m✔[0m  Messages-uqcdlcixrfhpvlcslxgrpqvaz4-cinda           [0;32mACTIVE[0m
+  [0;32m✔[0m  Messages-uyxbz2ndazh7jjioeimk3ctuqq-bernadene       [0;32mACTIVE[0m
+  [0;32m✔[0m  Picture_Table                                       [0;32mACTIVE[0m
+  [0;32m✔[0m  SecureDataConnectFacilities                         [0;32mACTIVE[0m
+  [0;32m✔[0m  SecureDataConnectFacilities-3                       [0;32mACTIVE[0m
+  [0;32m✔[0m  StaffCheckIn_Table                                  [0;32mACTIVE[0m
+  [0;32m✔[0m  Staff_Landing_Notes                                 [0;32mACTIVE[0m
+  [0;32m✔[0m  Thought_Table                                       [0;32mACTIVE[0m
+
+  [1mTotal DynamoDB Tables: [0;32m46[0m
+
+[1m[0;36m  ▶  API Gateway — REST APIs (v1)[0m
+  ────────────────────────────────────────────────────────────
+[0;32m[17:03:05][0m Fetching REST APIs...
+  [1mAPI ID          Name                                           Endpoint[0m
+  ─────────────────────────────────────────────────────────────────────────────────────
+  [0;32m✔[0m  0j48f3mayg      act-secure-report-delivery-apigw-3             [2mhttps://0j48f3mayg.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  097s770sac      backendApi                                     [2mhttps://097s770sac.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  0thizvg0q4      backendApi                                     [2mhttps://0thizvg0q4.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  esjiak8rfe      backendApi                                     [2mhttps://esjiak8rfe.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  97a7sz4dz6      bhaSession                                     [2mhttps://97a7sz4dz6.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  e3w6vikzb7      bhaSession                                     [2mhttps://e3w6vikzb7.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  qhvwc28krb      bhaSession                                     [2mhttps://qhvwc28krb.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  648ttjnrok      engageapi                                      [2mhttps://648ttjnrok.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  gglgqcaplf      engageapi                                      [2mhttps://gglgqcaplf.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  xf121hff8g      engageapi                                      [2mhttps://xf121hff8g.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  m7gj3gbagk      MarketplaceSubscriberApi                       [2mhttps://m7gj3gbagk.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  zt47qmyhg7      Secure-Watcher-Report-Webhook-API              [2mhttps://zt47qmyhg7.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  ibdgfwh94d      staffApi                                       [2mhttps://ibdgfwh94d.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  ji8d3icjqg      staffApi                                       [2mhttps://ji8d3icjqg.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  y31kkaqup7      staffApi                                       [2mhttps://y31kkaqup7.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  at8xiu2jre      webhook                                        [2mhttps://at8xiu2jre.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  lyqy93qmol      webhook                                        [2mhttps://lyqy93qmol.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  zvxyjpcm0d      webhook                                        [2mhttps://zvxyjpcm0d.execute-api.eu-central-1.amazonaws.com[0m
+
+  [1mTotal REST APIs: [0;32m18[0m
+
+[1m[0;36m  ▶  API Gateway — HTTP APIs (v2)[0m
+  ────────────────────────────────────────────────────────────
+[0;32m[17:03:07][0m Fetching HTTP APIs...
+  [1mAPI ID          Name                                           Endpoint[0m
+  ─────────────────────────────────────────────────────────────────────────────────────
+  [0;32m✔[0m  pity9w2qf3      HealthAPI                                      [2mhttps://pity9w2qf3.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  amjyutc4ye      HealthDashboardAPI                             [2mhttps://amjyutc4ye.execute-api.eu-central-1.amazonaws.com[0m
+  [0;32m✔[0m  jn1c69qblh      HealthDashboardAPI                             [2mhttps://jn1c69qblh.execute-api.eu-central-1.amazonaws.com[0m
+
+  [1mTotal HTTP APIs: [0;32m3[0m
+
+[1m[0;36m  ▶  Cognito User Pools[0m
+  ────────────────────────────────────────────────────────────
+[0;32m[17:03:08][0m Fetching Cognito User Pools...
+  [1mPool Name                       Pool ID                    Created[0m
+  ─────────────────────────────────────────────────────────────────────────────────────
+  [0;32m✔[0m  catalysthealthyagingcd0f7d5d_userpool_cd0f7d5d-bernadene  eu-central-1_MxfviYZRR     2026-04-09
+  [0;32m✔[0m  catalysthealthyagingcd0f7d5d_userpool_cd0f7d5d-dev  eu-central-1_sqttUUuia     2026-03-27
+  [0;32m✔[0m  catalysthealthyagingd8e0fa41_userpool_d8e0fa41-cinda  eu-central-1_QZYEbfvv4     2026-04-01
+
+  [1mTotal Cognito User Pools: [0;32m3[0m
+
+[1m[0;36m  ▶  Secrets Manager[0m
+  ────────────────────────────────────────────────────────────
+[0;32m[17:03:09][0m Fetching Secrets...
+  [1;33m—[0m  No secrets found.
+
+  [1mTotal Secrets: [0;32m0[0m
+
+[1m[0;36m  ▶  Amplify Apps & Branches[0m
+  ────────────────────────────────────────────────────────────
+[0;32m[17:03:10][0m Fetching Amplify Apps...
+
+  [1m[0;34mApp:[0m assess-medi-clinic-eu-central-1 [2m(ID: d1pcxhvq2e48x2 | Platform: WEB)[0m
+  [1mStage  Branch Name                     Status        Last Deploy[0m
+  ───────────────────────────────────────────────────────────────────────────
+  [0;32m✔[0m  PRODUCTION  staging                         0000000035    2026-07-07
+
+  [1m[0;34mApp:[0m Catalyst-HealthyAging          [2m(ID: d246slprgvqfid | Platform: WEB_COMPUTE)[0m
+  [1mStage  Branch Name                     Status        Last Deploy[0m
+  ───────────────────────────────────────────────────────────────────────────
+  [0;32m✔[0m  NONE   feature/fibricheck              0000000006    2026-04-09
+  [0;32m✔[0m  NONE   medi-clinic                     0000000001    2026-04-01
+  [0;32m✔[0m  PRODUCTION  medi-clinic-eu-central-1        0000000106    2026-07-01
+
+  [1m[0;34mApp:[0m mediClinic                     [2m(ID: d2fyag2c6a65eq | Platform: WEB)[0m
+  [1mStage  Branch Name                     Status        Last Deploy[0m
+  ───────────────────────────────────────────────────────────────────────────
+  [1;33m—[0m  No branches found.
+
+  [1mTotal Amplify Apps: [0;32m3[0m
+
+[1m[0;36m  ▶  IAM Roles (Lambda & Amplify)[0m
+  ────────────────────────────────────────────────────────────
+[0;32m[17:03:15][0m Fetching relevant IAM Roles...
+  [1mRole Name                                      Created[0m
+  ───────────────────────────────────────────────────────────────────────────
+  [0;32m✔[0m  amplify-catalysthealthyaging-bernadene-1d6ab-authRole  2026-04-09
+  [0;32m✔[0m  amplify-catalysthealthyaging-bernadene-1d6ab-authRole-idp  2026-04-09
+  [0;32m✔[0m  amplify-catalysthealthyaging-bernadene-1d6ab-unauthRole  2026-04-09
+  [0;32m✔[0m  amplify-catalysthealthyaging-cinda-ca46a-authRole  2026-04-01
+  [0;32m✔[0m  amplify-catalysthealthyaging-cinda-ca46a-authRole-idp  2026-04-01
+  [0;32m✔[0m  amplify-catalysthealthyaging-cinda-ca46a-unauthRole  2026-04-01
+  [0;32m✔[0m  amplify-catalysthealthyaging-clementine-647c2-authRole  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-clementine-647c2-authRole-idp  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-clementine-647c2-unauthRole  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-demo-7c66f-authRole  2026-07-30
+  [0;32m✔[0m  amplify-catalysthealthyaging-demo-7c66f-authRole-idp  2026-07-30
+  [0;32m✔[0m  amplify-catalysthealthyaging-demo-7c66f-unauthRole  2026-07-30
+  [0;32m✔[0m  amplify-catalysthealthyaging-dev-5a4d9-authRole  2026-03-27
+  [0;32m✔[0m  amplify-catalysthealthyaging-dev-5a4d9-authRole-idp  2026-03-27
+  [0;32m✔[0m  amplify-catalysthealthyaging-dev-5a4d9-unauthRole  2026-03-27
+  [0;32m✔[0m  amplify-catalysthealthyaging-fernanda-49ebd-authRole  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-fernanda-49ebd-authRole-idp  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-fernanda-49ebd-unauthRole  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-ivett-fef28-authRole  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-ivett-fef28-unauthRole  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-mediclinic-3f5cb-authRole  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-mediclinic-3f5cb-authRole-idp  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-mediclinic-3f5cb-unauthRole  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-norine-35979-authRole  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-norine-35979-authRole-idp  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-norine-35979-unauthRole  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-staging-74c69-authRole  2025-08-08
+  [0;32m✔[0m  amplify-catalysthealthyaging-staging-74c69-authRole-idp  2025-08-08
+  [0;32m✔[0m  amplify-catalysthealthyaging-staging-74c69-unauthRole  2025-08-08
+  [0;32m✔[0m  amplifyconsole-backend-role                    2025-08-06
+  [0;32m✔[0m  amplify-mediclinic-dev-36d90-authRole          2026-03-27
+  [0;32m✔[0m  amplify-mediclinic-dev-36d90-unauthRole        2026-03-27
+  [0;32m✔[0m  BackendApi-demo-role-y0d3dbbv                  2026-07-28
+  [0;32m✔[0m  catalysthealthyagingLambdaRole00cd32ca-staging  2025-08-08
+  [0;32m✔[0m  catalysthealthyagingLambdaRole0484d432-cinda   2026-04-01
+  [0;32m✔[0m  catalysthealthyagingLambdaRole0484d432-norine  2026-03-11
+  [0;32m✔[0m  catalysthealthyagingLambdaRole099638e2-bernadene  2026-04-09
+  [0;32m✔[0m  catalysthealthyagingLambdaRole099638e2-dev     2026-03-27
+  [0;32m✔[0m  catalysthealthyagingLambdaRole161128fa-demo    2026-07-30
+  [0;32m✔[0m  catalysthealthyagingLambdaRole176c5413-bernadene  2026-04-09
+  [0;32m✔[0m  catalysthealthyagingLambdaRole176c5413-dev     2026-03-27
+  [0;32m✔[0m  catalysthealthyagingLambdaRole23553b00-staging  2026-03-02
+  [0;32m✔[0m  catalysthealthyagingLambdaRole2da9804d-cinda   2026-04-01
+  [0;32m✔[0m  catalysthealthyagingLambdaRole2da9804d-norine  2026-03-11
+  [0;32m✔[0m  catalysthealthyagingLambdaRole2f06dba7-staging  2025-08-08
+  [0;32m✔[0m  catalysthealthyagingLambdaRole3a0f7ac1-demo    2026-07-30
+  [0;32m✔[0m  catalysthealthyagingLambdaRole47ac8709-staging  2025-08-11
+  [0;32m✔[0m  catalysthealthyagingLambdaRole4b8c5a33-bernadene  2026-04-09
+  [0;32m✔[0m  catalysthealthyagingLambdaRole4b8c5a33-dev     2026-03-27
+  [0;32m✔[0m  catalysthealthyagingLambdaRole53b1c0ad-demo    2026-07-30
+  [0;32m✔[0m  catalysthealthyagingLambdaRole683fcbc5-demo    2026-07-30
+  [0;32m✔[0m  catalysthealthyagingLambdaRole6de50b53-bernadene  2026-04-09
+  [0;32m✔[0m  catalysthealthyagingLambdaRole6de50b53-dev     2026-03-27
+  [0;32m✔[0m  catalysthealthyagingLambdaRole6fff75d7-bernadene  2026-04-09
+  [0;32m✔[0m  catalysthealthyagingLambdaRole6fff75d7-dev     2026-03-27
+  [0;32m✔[0m  catalysthealthyagingLambdaRole8557dbb3-cinda   2026-04-01
+  [0;32m✔[0m  catalysthealthyagingLambdaRole8557dbb3-norine  2026-03-11
+  [0;32m✔[0m  catalysthealthyagingLambdaRole8a00d602-demo    2026-07-30
+  [0;32m✔[0m  catalysthealthyagingLambdaRolea4dfb4de-staging  2025-09-29
+  [0;32m✔[0m  catalysthealthyagingLambdaRoleb3754b06-bernadene  2026-04-09
+  [0;32m✔[0m  catalysthealthyagingLambdaRoleb3754b06-dev     2026-03-27
+  [0;32m✔[0m  catalysthealthyagingLambdaRoleb8bf937a-cinda   2026-04-01
+  [0;32m✔[0m  catalysthealthyagingLambdaRoleb8bf937a-norine  2026-03-11
+  [0;32m✔[0m  catalysthealthyagingLambdaRolec1bfd6c5-cinda   2026-04-01
+  [0;32m✔[0m  catalysthealthyagingLambdaRolec1bfd6c5-norine  2026-03-11
+  [0;32m✔[0m  catalysthealthyagingLambdaRolec9d6eaaf-staging  2025-08-08
+  [0;32m✔[0m  catalysthealthyagingLambdaRoled33c318c-demo    2026-07-30
+  [0;32m✔[0m  catalysthealthyagingLambdaRoled4f7144a-staging  2025-09-02
+  [0;32m✔[0m  catalysthealthyagingLambdaRoled585197f-demo    2026-07-30
+  [0;32m✔[0m  catalysthealthyagingLambdaRolee5e35231-cinda   2026-04-01
+  [0;32m✔[0m  catalysthealthyagingLambdaRolee5e35231-norine  2026-03-11
+  [0;32m✔[0m  catalysthealthyagingLambdaRolef38dfbbd-cinda   2026-04-01
+  [0;32m✔[0m  catalysthealthyagingLambdaRolef38dfbbd-norine  2026-03-11
+  [0;32m✔[0m  catalysthealthyagingLambdaRolefb65ccd4-bernadene  2026-04-09
+  [0;32m✔[0m  catalysthealthyagingLambdaRolefb65ccd4-dev     2026-03-27
+  [0;32m✔[0m  demo-lambda-role                               2026-07-31
+  [0;32m✔[0m  health-dashboard-lambda-role                   2026-04-15
+  [0;32m✔[0m  marketplace-subscriber-backend-LambdaExecutionRole-lY8pa3ilGvTl  2026-07-31
+  [0;32m✔[0m  pinpointLambdaRolef1335c3b-staging             2026-02-13
+  [0;32m✔[0m  SecureReportWatcherLambdaRole                  2026-05-14
+  [0;32m✔[0m  test-env-lambda-role                           2026-07-15
+  [0;32m✔[0m  upClientLambdaRole0b572b6c7c66f-demo           2026-07-30
+  [0;32m✔[0m  upClientLambdaRolecd0f7d5d1d6ab-bernadene      2026-04-09
+  [0;32m✔[0m  upClientLambdaRolecd0f7d5d5a4d9-dev            2026-03-27
+  [0;32m✔[0m  upClientLambdaRoled8e0fa4135979-norine         2026-03-11
+  [0;32m✔[0m  upClientLambdaRoled8e0fa413f5cb-mediclinic     2026-03-11
+  [0;32m✔[0m  upClientLambdaRoled8e0fa4149ebd-fernanda       2026-03-11
+  [0;32m✔[0m  upClientLambdaRoled8e0fa41647c2-clementine     2026-03-11
+  [0;32m✔[0m  upClientLambdaRoled8e0fa41ca46a-cinda          2026-04-01
+  [0;32m✔[0m  upClientLambdaRolee99a3aec74c69-staging        2025-08-08
+
+  [1mTotal Roles Found: [0;32m90[0m
+
+[1m[0;36m  ▶  S3 Buckets (All Regions)[0m
+  ────────────────────────────────────────────────────────────
+[0;32m[17:03:19][0m Fetching S3 Buckets...
+  [1mBucket Name                                              Created[0m
+  ───────────────────────────────────────────────────────────────────────────
+  [0;32m✔[0m  acti-fallback-staff                                      2026-04-26
+  [0;32m✔[0m  amplify-catalysthealthyaging-audy-4253a-deployment       2026-03-13
+  [0;32m✔[0m  amplify-catalysthealthyaging-bernadene-1d6ab-deployment  2026-04-30
+  [0;32m✔[0m  amplify-catalysthealthyaging-beverie-220ee-deployment    2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-brandea-de2cc-deployment    2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-cinda-ca46a-deployment      2026-04-29
+  [0;32m✔[0m  amplify-catalysthealthyaging-clementine-647c2-deployment  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-dev-5a4d9-deployment        2026-04-29
+  [0;32m✔[0m  amplify-catalysthealthyaging-fernanda-49ebd-deployment   2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-ivett-fef28-deployment      2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-jerry-4d7b6-deployment      2025-11-06
+  [0;32m✔[0m  amplify-catalysthealthyaging-lyda-52f45-deployment       2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-mediclinic-3f5cb-deployment  2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-mikaela-7e904-deployment    2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-norine-35979-deployment     2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-sande-dbfff-deployment      2026-03-11
+  [0;32m✔[0m  amplify-catalysthealthyaging-staging-74c69-deployment    2025-11-06
+  [0;32m✔[0m  amplify-catalysthealthyaging-ulla-70af8-deployment       2025-11-06
+  [0;32m✔[0m  amplify-mediclinic-dev-36d90-deployment                  2026-04-30
+  [0;32m✔[0m  assess-demo-eu-west-1                                    2026-07-31
+  [0;32m✔[0m  aws-health-dashboard-23158504                            2026-04-15
+  [0;32m✔[0m  aws-health-dashboard-305729                              2026-04-15
+  [0;32m✔[0m  aws-health-dashboard-31706804                            2026-04-15
+  [0;32m✔[0m  aws-health-dashboard-47721725                            2026-04-15
+  [0;32m✔[0m  aws-health-dashboard-605140                              2026-04-15
+  [0;32m✔[0m  aws-s3-dynamodb-backup                                   2026-04-29
+  [0;32m✔[0m  cf-templates-10z6d3pbtqxs5-me-central-1                  2025-08-06
+  [0;32m✔[0m  frontend-app-eu-west-1-1784100277                        2026-07-15
+  [0;32m✔[0m  healthy-aging-buckets-frankfurt                          2026-06-29
+  [0;32m✔[0m  healthy-aging-buckets-test                               2025-08-08
+  [0;32m✔[0m  healthy-aging-buckets-test-215116348101-eu-central-1-an  2026-03-31
+  [0;32m✔[0m  optain-picker-1-eu                                       2026-05-14
+  [0;32m✔[0m  optain-picker-1-eu-3                                     2026-07-09
+  [0;32m✔[0m  smartkablesai                                            2025-11-08
+
+  [1mTotal S3 Buckets: [0;32m34[0m
+
+[1m[0;36m  ▶  CloudWatch Log Groups (Lambda)[0m
+  ────────────────────────────────────────────────────────────
+[0;32m[17:03:20][0m Fetching Lambda Log Groups...
+  [1mLog Group                                                Retention[0m
+  ───────────────────────────────────────────────────────────────────────────
+  [0;32m✔[0m  /aws/lambda/act-secure-watcher-auth-3                    Never days
+  [0;32m✔[0m  /aws/lambda/act-secure-watcher-connector-3               Never days
+  [0;32m✔[0m  /aws/lambda/act-secure-watcher-processor-3               Never days
+  [0;32m✔[0m  /aws/lambda/act-secure-watcher-report-delivery           Never days
+  [0;32m✔[0m  /aws/lambda/act-secure-watcher-upload-3                  Never days
+  [0;32m✔[0m  /aws/lambda/amplify-catalysthealthyag-UpdateRolesWithIDPFuncti-8QRghrN43vBy  Never days
+  [0;32m✔[0m  /aws/lambda/amplify-catalysthealthyag-UpdateRolesWithIDPFuncti-jPtFRz3jQTxS  Never days
+  [0;32m✔[0m  /aws/lambda/amplify-catalysthealthyag-UpdateRolesWithIDPFuncti-MylD3VKnyWY9  Never days
+  [0;32m✔[0m  /aws/lambda/backendApi-dev                               Never days
+  [0;32m✔[0m  /aws/lambda/bhaSession-dev                               Never days
+  [0;32m✔[0m  /aws/lambda/engageapi-dev                                Never days
+  [0;32m✔[0m  /aws/lambda/firebaseTrigger-bernadene                    Never days
+  [0;32m✔[0m  /aws/lambda/firebaseTrigger-cinda                        Never days
+  [0;32m✔[0m  /aws/lambda/firebaseTrigger-dev                          Never days
+  [0;32m✔[0m  /aws/lambda/health-api-fetch                             Never days
+  [0;32m✔[0m  /aws/lambda/HealthApiLambda                              Never days
+  [0;32m✔[0m  /aws/lambda/HealthIngestionLambda                        Never days
+  [0;32m✔[0m  /aws/lambda/health-sqs-to-dynamo                         Never days
+  [0;32m✔[0m  /aws/lambda/intern-saveData                              Never days
+  [0;32m✔[0m  /aws/lambda/MarketplaceSubscriberHandler                 Never days
+  [0;32m✔[0m  /aws/lambda/membershipScheduler-bernadene                Never days
+  [0;32m✔[0m  /aws/lambda/membershipScheduler-cinda                    Never days
+  [0;32m✔[0m  /aws/lambda/membershipScheduler-dev                      Never days
+  [0;32m✔[0m  /aws/lambda/sendEventReminderNotification                Never days
+  [0;32m✔[0m  /aws/lambda/staffApi-dev                                 Never days
+  [0;32m✔[0m  /aws/lambda/webhook-dev                                  Never days
+
+  [1mTotal Log Groups: [0;32m26[0m
+
+[1m[0;36m  ▶  SUMMARY — Frankfurt (eu-central-1)[0m
+  ════════════════════════════════════════════════════════════
+  [1mLambda Functions:                    [0;32m36[0m
+  [1mDynamoDB Tables:                     [0;32m46[0m
+  [1mREST APIs (v1):                      [0;32m18[0m
+  [1mHTTP APIs (v2):                      [0;32m3[0m
+  [1mCognito User Pools:                  [0;32m3[0m
+  [1mSecrets Manager:                     [0;32m0[0m
+  [1mAmplify Apps:                        [0;32m3[0m
+  [1mS3 Buckets:                          [0;32m34[0m
+  [1mCloudWatch Log Groups:               [0;32m26[0m
+  ════════════════════════════════════════════════════════════
+  [2mReport generated at: 2026-08-04 17:03:22[0m
+
+  [1;33mReport also saved to: [1mfrankfurt-report.txt[0m
+

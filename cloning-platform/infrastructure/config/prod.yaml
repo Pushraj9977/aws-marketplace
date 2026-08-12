@@ -1,0 +1,20 @@
+# Production environment configuration
+aws:
+  region: eu-central-1
+  account_id: "215116348101"
+
+dynamodb:
+  environment_state_table: EnvironmentState
+  subscribers_table: MarketplaceSubscribers
+
+cloning:
+  source_env_name: dev
+
+amplify:
+  app_id: d246slprgvqfid
+
+reports:
+  s3_bucket: ${REPORT_S3_BUCKET}
+
+notifications:
+  topic_arn: ${NOTIFICATION_TOPIC_ARN}

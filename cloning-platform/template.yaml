@@ -1,0 +1,161 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AWS Environment Cloning Platform
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 900
+    MemorySize: 1024
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+        SUBSCRIBERS_TABLE: MarketplaceSubscribers
+        STATE_TABLE: !Ref EnvironmentStateTable
+
+Resources:
+  # ==========================================
+  # DynamoDB Tables for State Management
+  # ==========================================
+  EnvironmentStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: environment_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: environment_id
+          KeyType: HASH
+
+  # ==========================================
+  # Step Functions State Machine
+  # ==========================================
+  CloningStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: STANDARD
+      Definition:
+        StartAt: ProvisionDynamoDB
+        States:
+          ProvisionDynamoDB:
+            Type: Task
+            Resource: !GetAtt PipelineWorkerFunction.Arn
+            Parameters:
+              step: PROVISION_DYNAMODB
+              environment.$: "$.environment"
+            Next: ProvisionSecrets
+          ProvisionSecrets:
+            Type: Task
+            Resource: !GetAtt PipelineWorkerFunction.Arn
+            Parameters:
+              step: PROVISION_SECRETS
+              environment.$: "$.environment"
+            Next: ProvisionCognito
+          ProvisionCognito:
+            Type: Task
+            Resource: !GetAtt PipelineWorkerFunction.Arn
+            Parameters:
+              step: PROVISION_COGNITO
+              environment.$: "$.environment"
+            Next: ProvisionAppSync
+          ProvisionAppSync:
+            Type: Task
+            Resource: !GetAtt PipelineWorkerFunction.Arn
+            Parameters:
+              step: PROVISION_APPSYNC
+              environment.$: "$.environment"
+            Next: ProvisionLambdas
+          ProvisionLambdas:
+            Type: Task
+            Resource: !GetAtt PipelineWorkerFunction.Arn
+            Parameters:
+              step: PROVISION_LAMBDA
+              environment.$: "$.environment"
+            Next: ProvisionApiGateway
+          ProvisionApiGateway:
+            Type: Task
+            Resource: !GetAtt PipelineWorkerFunction.Arn
+            Parameters:
+              step: PROVISION_API_GATEWAY
+              environment.$: "$.environment"
+            Next: ProvisionAmplify
+          ProvisionAmplify:
+            Type: Task
+            Resource: !GetAtt PipelineWorkerFunction.Arn
+            Parameters:
+              step: PROVISION_AMPLIFY
+              environment.$: "$.environment"
+            Next: HealthCheck
+          HealthCheck:
+            Type: Task
+            Resource: !GetAtt HealthCheckFunction.Arn
+            Next: GenerateReport
+          GenerateReport:
+            Type: Task
+            Resource: !GetAtt ReportGeneratorFunction.Arn
+            End: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref PipelineWorkerFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref HealthCheckFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ReportGeneratorFunction
+
+  # ==========================================
+  # Lambda Functions
+  # ==========================================
+  PipelineWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src.handlers.pipeline_worker.handler
+      Policies:
+        - AdministratorAccess # Highly privileged since it clones infrastructure
+
+  MarketplaceSubscriberFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src.handlers.marketplace_subscriber.handler
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Ref CloningStateMachine
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: MarketplaceSubscribers
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EnvironmentStateTable
+        - StepFunctionsExecutionPolicy:
+            StateMachineName: !GetAtt CloningStateMachine.Name
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /register
+            Method: post
+
+  HealthCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src.handlers.health_check.handler
+      Policies:
+        - AdministratorAccess
+
+  ReportGeneratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src.handlers.report_generator.handler
+      Policies:
+        - AdministratorAccess
+
+Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL for POST /register"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/register/"
+  StateMachineArn:
+    Description: "Cloning Step Function ARN"
+    Value: !Ref CloningStateMachine

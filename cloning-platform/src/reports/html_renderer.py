@@ -1,0 +1,116 @@
+"""
+html_renderer.py — Renders an HTML report from an EnvironmentModel using Jinja2.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+from ..common.models import EnvironmentModel
+from .json_reporter import JSONReporter
+
+
+class HTMLRenderer:
+    """Renders a styled HTML report for the completed clone operation."""
+
+    def render(self, env: EnvironmentModel) -> str:
+        """
+        Render the HTML report.
+
+        Falls back to a built-in template if Jinja2 is not available.
+
+        Args:
+            env: The completed EnvironmentModel.
+
+        Returns:
+            HTML string.
+        """
+        data = JSONReporter().generate(env)
+        try:
+            from jinja2 import Environment as Jinja2Env, FileSystemLoader, select_autoescape
+            templates_dir = Path(__file__).parent / "templates"
+            j2 = Jinja2Env(
+                loader=FileSystemLoader(str(templates_dir)),
+                autoescape=select_autoescape(["html"]),
+            )
+            template = j2.get_template("environment_report.html.j2")
+            return template.render(data=data, env=env)
+        except Exception:
+            return self._fallback_html(data)
+
+    def _fallback_html(self, data: dict) -> str:
+        """Minimal HTML report when Jinja2 is unavailable."""
+        env_data = data.get("environment", {})
+        subscriber = data.get("subscriber", {})
+        resources = data.get("resources", [])
+        summary = data.get("summary", {})
+        endpoints = data.get("endpoints", {})
+        credentials = data.get("credentials", {})
+
+        resource_rows = "".join(
+            f"<tr>"
+            f"<td>{r['resource_type']}</td>"
+            f"<td>{r['source_id']}</td>"
+            f"<td>{r['target_id']}</td>"
+            f"<td style='color:{'green' if r['status']=='DONE' else 'red'}'>{r['status']}</td>"
+            f"</tr>"
+            for r in resources
+        )
+
+        api_rows = "".join(
+            f"<tr><td>{fn}</td><td><a href='{url}'>{url}</a></td></tr>"
+            for fn, url in endpoints.get("api_urls", {}).items()
+        )
+
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Environment Report — {env_data.get('target_env_name', '')}</title>
+<style>
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background:#0f1117; color:#e2e8f0; margin:0; padding:32px; }}
+  h1   {{ color:#38bdf8; }} h2 {{ color:#7dd3fc; margin-top:32px; }}
+  table{{ border-collapse:collapse; width:100%; margin-top:12px; }}
+  th   {{ background:#1e293b; color:#94a3b8; padding:10px 14px; text-align:left; }}
+  td   {{ padding:9px 14px; border-bottom:1px solid #1e293b; }}
+  .badge-done {{ color:#4ade80; }} .badge-fail {{ color:#f87171; }}
+  .card {{ background:#1e293b; border-radius:8px; padding:20px; margin:16px 0; }}
+  .kv  {{ display:flex; gap:40px; flex-wrap:wrap; }}
+  .kv-item span {{ display:block; font-size:11px; color:#64748b; margin-bottom:4px; }}
+  .kv-item strong {{ font-size:15px; }}
+</style>
+</head>
+<body>
+<h1>✅ Environment Provisioning Report</h1>
+<div class="card">
+  <div class="kv">
+    <div class="kv-item"><span>Environment</span><strong>{env_data.get('target_env_name','')}</strong></div>
+    <div class="kv-item"><span>Company</span><strong>{subscriber.get('company_name','')}</strong></div>
+    <div class="kv-item"><span>Region</span><strong>{env_data.get('region','')}</strong></div>
+    <div class="kv-item"><span>Status</span><strong class="badge-done">{env_data.get('status','')}</strong></div>
+    <div class="kv-item"><span>Started</span><strong>{env_data.get('started_at','')}</strong></div>
+    <div class="kv-item"><span>Completed</span><strong>{env_data.get('completed_at','')}</strong></div>
+    <div class="kv-item"><span>Total Resources</span><strong>{summary.get('total_resources',0)}</strong></div>
+    <div class="kv-item"><span>Done</span><strong class="badge-done">{summary.get('done',0)}</strong></div>
+    <div class="kv-item"><span>Failed</span><strong class="badge-fail">{summary.get('failed',0)}</strong></div>
+  </div>
+</div>
+<h2>Resources</h2>
+<table><tr><th>Type</th><th>Source</th><th>Target</th><th>Status</th></tr>{resource_rows}</table>
+<h2>Endpoints</h2>
+<div class="card">
+  <p><strong>Cognito User Pool:</strong> {endpoints.get('cognito_user_pool_id','')}</p>
+  <p><strong>Cognito App Client:</strong> {endpoints.get('cognito_app_client_id','')}</p>
+  <p><strong>Secret:</strong> {endpoints.get('secret_name','')}</p>
+</div>
+<h2>API Gateway URLs</h2>
+<table><tr><th>Function</th><th>URL</th></tr>{api_rows}</table>
+<h2>Admin Credentials</h2>
+<div class="card">
+  <p><strong>Admin Email:</strong> {credentials.get('admin_email','')}</p>
+  <p><strong>Admin Password:</strong> <code>{credentials.get('admin_password','')}</code></p>
+</div>
+<p style="color:#475569;margin-top:40px;font-size:12px">
+  Generated by CloningPlatform | {data.get('generated_at','')}
+</p>
+</body></html>"""
