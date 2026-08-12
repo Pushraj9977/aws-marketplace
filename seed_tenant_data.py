@@ -8,9 +8,9 @@ def seed_dynamodb(env_name):
     print(f"=== Seeding DynamoDB Tables for Environment: {env_name} ===")
     dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
     
-    # Tables
-    config_table_name = f"catEncounter_ConfigurationTable-{env_name}"
-    staff_table_name = f"catEncounter_StaffTable-{env_name}"
+    # Tables - Shared DB Architecture
+    config_table_name = "Catalyst_CompConfig"
+    staff_table_name = "catEncounter_StaffTable"
     
     org_id = f"org-{env_name}"
     admin_email = f"admin@{env_name}.com"
@@ -21,6 +21,7 @@ def seed_dynamodb(env_name):
         config_table = dynamodb.Table(config_table_name)
         config_table.put_item(
             Item={
+                'serialNumber': org_id,
                 'organizationId': org_id,
                 'isAppCalories': False,
                 'isAppMessages': True,

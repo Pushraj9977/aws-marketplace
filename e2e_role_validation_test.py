@@ -113,8 +113,8 @@ def phase2_ui_validation():
         print("The browser will launch, but you will need to type the password manually.\n")
     
     with sync_playwright() as p:
-        # Launching in headed mode so the user can visually verify the UI test execution
-        browser = p.chromium.launch(headless=False, slow_mo=50) 
+        # Launching in headless mode for automated environments
+        browser = p.chromium.launch(headless=True, slow_mo=50) 
         context = browser.new_context()
         page = context.new_page()
         
