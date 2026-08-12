@@ -254,7 +254,8 @@ API_URLS=""
 if dryrun "Would clone Lambdas and create REST APIs"; then :
 else
   log "Searching for Lambdas matching '*${SOURCE_ENV}*'..."
-  mapfile -t LAMBDAS < <(aws lambda list-functions --region "$REGION" --query "Functions[?contains(FunctionName, '$SOURCE_ENV')].FunctionName" --output text)
+  mapfile -t LAMBDAS < <(aws lambda list-functions --region "$REGION" --output json \
+    | jq -r --arg s "$SOURCE_ENV" '.Functions[].FunctionName | select(contains($s))')
   
   if [[ ${#LAMBDAS[@]} -eq 0 || -z "${LAMBDAS[0]:-}" ]]; then
     warn "No Lambdas found matching $SOURCE_ENV."
@@ -335,7 +336,7 @@ else
           API_URL: $api
         }')"
       
-      aws lambda update-function-configuration --region "$REGION" --function-name "$L_TARGET" --environment "Variables=$(jq -c '.' <<< "$MERGED")" >/dev/null
+      aws lambda update-function-configuration --region "$REGION" --function-name "$L_TARGET" --environment "{\"Variables\": $(jq -c '.' <<< "$MERGED")}" >/dev/null
       aws lambda wait function-updated-v2 --region "$REGION" --function-name "$L_TARGET"
     done
   fi
