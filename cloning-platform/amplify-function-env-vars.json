@@ -1,0 +1,200 @@
+{
+  "description": "process.env variables used by each Amplify Lambda function. Configured in each function's *-cloudformation-template.json under Environment.Variables.",
+  "note": "ENV and REGION are auto-set by Amplify. AWS_REGION is available at Lambda runtime. Secret values should live in Secrets Manager, not env vars.",
+  "functions": {
+    "staffApi": {
+      "configFile": "amplify/backend/function/staffApi/staffApi-cloudformation-template.json",
+      "sourceFiles": [
+        "amplify/backend/function/staffApi/src/app.js",
+        "amplify/backend/function/staffApi/src/middleware.js",
+        "amplify/backend/function/staffApi/src/crypto.js",
+        "amplify/backend/function/staffApi/src/cryptoService.js"
+      ],
+      "environmentVariables": {
+        "ENV": { "source": "amplify", "example": "test" },
+        "REGION": { "source": "amplify", "example": "eu-central-1" },
+        "AWS_REGION": { "source": "lambda-runtime", "example": "eu-central-1" },
+        "CatEncounter_Users_Table": { "example": "CatEncounter_Users_Table" },
+        "CatEncounter_Membership_Table": { "example": "catEncounter_Membership_Table" },
+        "CatEncounter_StaffTable": { "example": "catEncounter_StaffTable" },
+        "Thought_Table": { "example": "Thought_Table" },
+        "Picture_Table": { "example": "Picture_Table" },
+        "CatEncounter_Event_Table": { "example": "catEncounter_Event_Table" },
+        "Event_Landing_Notes": { "example": "Event_Landing_Notes" },
+        "Member_Landing_Notes": { "example": "Member_Landing_Notes" },
+        "Staff_Landing_Notes": { "example": "Staff_Landing_Notes" },
+        "CatEncounter_Dashboard_MessageBoard": { "example": "catEncounter_Dashboard_MessageBoard" },
+        "CheckIn_Table": { "example": "CheckIn_Table" },
+        "StaffCheckIn_Table": { "example": "StaffCheckIn_Table" },
+        "CatEncounter_RecommendedEvent": { "example": "CatEncounter_RecommendedEvent" },
+        "catEncourageStaffAssignments": { "example": "catEncourageStaffAssignments" },
+        "Catalyst_CompConfig": { "example": "Catalyst_CompConfig" },
+        "memberAssessments": { "example": "memberAssessments" },
+        "memberPlans": { "example": "memberPlans" },
+        "FeelingMeter": { "example": "FeelingMeter" },
+        "NEXT_PUBLIC_USER_POOL_ID": { "example": "eu-central-1_ZfgLytu2M" },
+        "NEXT_PUBLIC_S3Bucket": { "example": "healthy-aging-buckets-s3" },
+        "NEXT_PUBLIC_CDN_URL": { "example": "https://ddquohk3d1lfc.cloudfront.net" },
+        "EVENT_REMINDER_LAMBDA_ARN": { "example": "arn:aws:lambda:eu-central-1:ACCOUNT_ID:function:sendEventReminderNotification" },
+        "EVENT_REMINDER_SCHEDULER_ROLE_ARN": { "example": "arn:aws:iam::ACCOUNT_ID:role/schedulerrole06082026" },
+        "FIBRICHECK_API_BASE": { "example": "https://api.dev.fibricheck.com" },
+        "FIBRICHECK_GROUP_ID": { "example": "69971b79d872dd7802fc8ffe" },
+        "HeartRhythm_User_Table": {
+          "example": "HeartRhythm_User_Table",
+          "mismatch": "CloudFormation key is HEART_RHYTHM_USER_TABLE — rename to match code"
+        },
+        "HeartRhythm_Prescriptions_Table": {
+          "example": "HeartRhythm_Prescriptions_Table",
+          "mismatch": "CloudFormation key is HEART_RHYTHM_PRESCRIPTIONS_TABLE — rename to match code"
+        },
+        "HeartRhythm_Results_Table": {
+          "example": "HeartRhythm_Results_Table",
+          "mismatch": "CloudFormation key is HEART_RHYTHM_RESULTS_TABLE — rename to match code"
+        },
+        "Heart_Rhythm_Transaction_Log": { "example": "Heart_Rhythm_Transaction_Log" },
+        "HeartRhythm_Prescriptions_History_Table": {
+          "example": "HeartRhythm_Prescriptions_History_Table",
+          "mismatch": "CloudFormation key is HEART_RHYTHM_PRESCRIPTIONS_HISTORY_TABLE — rename to match code"
+        },
+        "SECRET_MANAGER_KEY": { "example": "HealthyLivingProd/catalyst/KeyJune2025" },
+        "SECRET_ACCESS_KEY_REGION": { "example": "eu-central-1" },
+        "VALID_API_KEY": { "example": "[REDACTED - use Secrets Manager]", "sensitive": true },
+        "SECRET_KEY": { "example": "[REDACTED - use Secrets Manager]", "sensitive": true },
+        "TEMPORARY_PASSWORD": {
+          "example": "[REDACTED]",
+          "sensitive": true,
+          "note": "Defined in CloudFormation but not used in code"
+        }
+      }
+    },
+    "engageapi": {
+      "configFile": "amplify/backend/function/engageapi/engageapi-cloudformation-template.json",
+      "sourceFiles": [
+        "amplify/backend/function/engageapi/src/app.js",
+        "amplify/backend/function/engageapi/src/middlware.js",
+        "amplify/backend/function/engageapi/src/crypto.js",
+        "amplify/backend/function/engageapi/src/cryptoService.js"
+      ],
+      "environmentVariables": {
+        "ENV": { "source": "amplify", "example": "test" },
+        "REGION": { "source": "amplify", "example": "eu-central-1" },
+        "AWS_REGION": { "source": "lambda-runtime", "example": "eu-central-1" },
+        "SECRET_MANAGER_KEY": { "example": "HealthyLivingProd/catalyst/KeyJune2025" },
+        "SECRET_ACCESS_KEY_REGION": { "example": "eu-central-1" },
+        "CatEncounter_Users_Table": { "example": "CatEncounter_Users_Table" },
+        "memberPlans": { "example": "memberPlans" },
+        "catEncounter_StaffTable": { "example": "catEncounter_StaffTable" },
+        "FeelingMeter": { "example": "FeelingMeter" },
+        "catEncounter_Event_Table": { "example": "catEncounter_Event_Table" },
+        "CatEncounter_RecommendedEvent": { "example": "CatEncounter_RecommendedEvent" },
+        "HeartRhythm_User_Table": { "example": "HeartRhythm_User_Table" },
+        "HeartRhythm_Prescriptions_Table": { "example": "HeartRhythm_Prescriptions_Table" },
+        "HeartRhythm_Results_Table": { "example": "HeartRhythm_Results_Table" },
+        "Heart_Rhythm_Transaction_Log": { "example": "Heart_Rhythm_Transaction_Log" },
+        "S3_BUCKET_NAME": { "example": "healthy-aging-buckets-s3" },
+        "VALID_API_KEY": { "example": "[REDACTED - use Secrets Manager]", "sensitive": true },
+        "SECRET_KEY": { "example": "[REDACTED - use Secrets Manager]", "sensitive": true }
+      }
+    },
+    "backendApi": {
+      "configFile": "amplify/backend/function/backendApi/backendApi-cloudformation-template.json",
+      "sourceFiles": [
+        "amplify/backend/function/backendApi/src/app.js",
+        "amplify/backend/function/backendApi/src/middleware.js",
+        "amplify/backend/function/backendApi/src/crypto.js"
+      ],
+      "environmentVariables": {
+        "ENV": { "source": "amplify", "example": "test" },
+        "REGION": { "source": "amplify", "example": "eu-central-1" },
+        "SECRET_MANAGER_KEY": { "example": "HealthyLivingProd/catalyst/KeyJune2025" },
+        "SECRET_ACCESS_KEY_REGION": { "example": "eu-central-1" },
+        "SECRET_MANAGER_KEY_KINETISENSE": { "example": "catalyst/kinetisense" },
+        "SECRET_ACCESS_KEY_REGION_KINETISENSE": { "example": "eu-central-1" },
+        "TableName": { "example": "CatEncounter_Users_Table" },
+        "Engage_CompConfig": { "example": "Catalyst_CompConfig" },
+        "CatalystEngageBHAResults": { "example": "CatalystEngageBHAResults" },
+        "CatalystEngageContactUstable": { "example": "CatalystEngageContactUstable" },
+        "VALID_API_KEY": { "example": "[REDACTED - use Secrets Manager]", "sensitive": true },
+        "SECRET_KEY": { "example": "[REDACTED - use Secrets Manager]", "sensitive": true }
+      }
+    },
+    "bhaSession": {
+      "configFile": "amplify/backend/function/bhaSession/bhaSession-cloudformation-template.json",
+      "sourceFiles": [
+        "amplify/backend/function/bhaSession/src/index.js"
+      ],
+      "environmentVariables": {
+        "ENV": { "source": "amplify", "example": "test" },
+        "REGION": { "source": "amplify", "example": "eu-central-1" },
+        "SECRET_MANAGER_KEY": { "example": "HealthyLivingProd/catalyst/KeyJune2025" },
+        "SECRET_ACCESS_KEY_REGION": { "example": "eu-central-1" },
+        "CF_SIGNED_URL_PRIVATE_KEY": { "example": "[REDACTED - use Secrets Manager]", "sensitive": true },
+        "CatalystEngageBHAResults": { "example": "CatalystEngageBHAResults" },
+        "STEP_FUNCTION_REGION": { "example": "eu-central-1" },
+        "STEP_FUNCTION_ARN": { "example": "arn:aws:states:eu-central-1:ACCOUNT_ID:stateMachine:save-bha-result" },
+        "SAVE_BHA_RESULT_STATE_MACHINE_ARN": {
+          "example": "arn:aws:states:eu-central-1:ACCOUNT_ID:stateMachine:save-bha-result",
+          "mismatch": "Not defined in CloudFormation — add or use STEP_FUNCTION_ARN in code"
+        }
+      }
+    },
+    "webhook": {
+      "configFile": "amplify/backend/function/webhook/webhook-cloudformation-template.json",
+      "sourceFiles": [
+        "amplify/backend/function/webhook/src/index.js"
+      ],
+      "environmentVariables": {
+        "ENV": { "source": "amplify", "example": "test" },
+        "REGION": { "source": "amplify", "example": "eu-central-1" },
+        "SECRET_MANAGER_KEY": {
+          "example": "HealthyLivingProd/catalyst/KeyJune2025",
+          "mismatch": "Used in code but missing from CloudFormation template"
+        },
+        "SECRET_ACCESS_KEY_REGION": {
+          "example": "eu-central-1",
+          "mismatch": "Used in code but missing from CloudFormation template"
+        },
+        "DYNAMODB_REGION": {
+          "example": "eu-central-1",
+          "mismatch": "Used in code but missing from CloudFormation template"
+        },
+        "CatEncounter_Users_Table": {
+          "example": "CatEncounter_Users_Table",
+          "mismatch": "Used in code but missing from CloudFormation template"
+        }
+      }
+    },
+    "firebaseTrigger": {
+      "configFile": "amplify/backend/function/firebaseTrigger/firebaseTrigger-cloudformation-template.json",
+      "sourceFiles": [
+        "amplify/backend/function/firebaseTrigger/src/index.js",
+        "amplify/backend/function/firebaseTrigger/src/getUsers.js"
+      ],
+      "environmentVariables": {
+        "ENV": { "source": "amplify", "example": "test" },
+        "REGION": { "source": "amplify", "example": "eu-central-1" },
+        "SECRET_MANAGER_KEY": { "example": "HealthyLivingProd/catalyst/KeyJune2025" },
+        "SECRET_ACCESS_KEY_REGION": { "example": "eu-central-1" },
+        "DYNAMODB_REGION": { "example": "eu-central-1" },
+        "CatEncounter_Users_Table": { "example": "CatEncounter_Users_Table" }
+      }
+    },
+    "membershipScheduler": {
+      "configFile": "amplify/backend/function/membershipScheduler/membershipScheduler-cloudformation-template.json",
+      "sourceFiles": [
+        "amplify/backend/function/membershipScheduler/src/index.js",
+        "amplify/backend/function/membershipScheduler/src/getData.js",
+        "amplify/backend/function/membershipScheduler/src/updateData.js"
+      ],
+      "environmentVariables": {
+        "ENV": { "source": "amplify", "example": "test" },
+        "REGION": { "source": "amplify", "example": "eu-central-1" },
+        "SECRET_MANAGER_KEY": { "example": "HealthyLivingProd/catalyst/KeyJune2025" },
+        "SECRET_ACCESS_KEY_REGION": { "example": "eu-central-1" },
+        "DYNAMODB_REGION": { "example": "eu-central-1" },
+        "CatEncounter_Users_Table": { "example": "CatEncounter_Users_Table" },
+        "catEncounter_Membership_Table": { "example": "catEncounter_Membership_Table" }
+      }
+    }
+  }
+}
