@@ -122,7 +122,7 @@ class CognitoProvisioner(BaseProvisioner):
     def _create_admin_user(self, idp: object, pool_id: str, env: EnvironmentModel) -> tuple[str, str]:
         """Create a default admin user with a permanent password."""
         email = f"admin@{env.target_env_name}.com"
-        password = "Admin@123456"  # Minimum 8, Upper, Lower, Number
+        password = "@~W@a27Z"  # Minimum 8, Upper, Lower, Number
 
         try:
             # 1. Create the user
