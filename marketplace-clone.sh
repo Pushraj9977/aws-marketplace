@@ -29,7 +29,12 @@ ask() {
   [[ -n "$default" ]] \
     && printf "  ${BOLD}?${RESET} %s ${DIM}[%s]${RESET}: " "$prompt" "$default" \
     || printf "  ${BOLD}?${RESET} %s: " "$prompt"
-  read -r ans < /dev/tty; REPLY="${ans:-$default}"
+  if [ -e /dev/tty ]; then
+    read -r ans < /dev/tty
+  else
+    ans=""  # non-interactive: use default
+  fi
+  REPLY="${ans:-$default}"
 }
 confirm() {
   local prompt="$1" default="${2:-y}" hint ans
@@ -45,10 +50,16 @@ require_cmd() { command -v "$1" >/dev/null 2>&1 || die "Required: $1 not found. 
 
 
 DRY_RUN=false
+TARGET_ENV_ARG=""
+SOURCE_ENV_ARG=""
+AMPLIFY_APP_ID_ARG=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --dry-run|-d) DRY_RUN=true; shift ;;
-    --help|-h) printf "\nUsage: %s [--dry-run]\n\n" "$0"; exit 0 ;;
+    --dry-run|-d)       DRY_RUN=true; shift ;;
+    --target-env)       TARGET_ENV_ARG="$2"; shift 2 ;;
+    --source-env)       SOURCE_ENV_ARG="$2"; shift 2 ;;
+    --amplify-app-id)   AMPLIFY_APP_ID_ARG="$2"; shift 2 ;;
+    --help|-h) printf "\nUsage: %s [--dry-run] [--target-env NAME] [--source-env NAME] [--amplify-app-id ID]\n\n" "$0"; exit 0 ;;
     *) die "Unknown argument: $1" ;;
   esac
 done
@@ -97,8 +108,13 @@ SUBSCRIBERS_JSON="$(aws dynamodb scan \
 COUNT="$(jq -r '.Count' <<< "$SUBSCRIBERS_JSON")"
 if [[ "$COUNT" == "0" ]]; then
   info "No subscribers found with isDeployed = false."
-  ask "Target Environment Name manually (since no subscribers were found)" "marketplace-demo"
-  TARGET_ENV="$REPLY"
+  if [[ -n "$TARGET_ENV_ARG" ]]; then
+    TARGET_ENV="$TARGET_ENV_ARG"
+    ok "Using --target-env: $TARGET_ENV"
+  else
+    ask "Target Environment Name manually (since no subscribers were found)" "marketplace-demo"
+    TARGET_ENV="$REPLY"
+  fi
   REG_TOKEN="manual-token"
 else
   printf "  ${BOLD}?${RESET} Select a subscriber to deploy:\n"
@@ -126,42 +142,29 @@ fi
 #  Base Environment & Configuration
 # =============================================================================
 section "Base Environment & Configuration"
-ask "Source/Base Environment Name (to clone from)" "demo"
-SOURCE_ENV="$REPLY"
+if [[ -n "$SOURCE_ENV_ARG" ]]; then
+  SOURCE_ENV="$SOURCE_ENV_ARG"
+  ok "Using --source-env: $SOURCE_ENV"
+else
+  ask "Source/Base Environment Name (to clone from)" "demo"
+  SOURCE_ENV="$REPLY"
+fi
 
-ask "Amplify App ID (for frontend deployment)" "d246slprgvqfid"
-AMPLIFY_APP_ID="$REPLY"
+if [[ -n "$AMPLIFY_APP_ID_ARG" ]]; then
+  AMPLIFY_APP_ID="$AMPLIFY_APP_ID_ARG"
+  ok "Using --amplify-app-id: $AMPLIFY_APP_ID"
+else
+  ask "Amplify App ID (for frontend deployment)" "d246slprgvqfid"
+  AMPLIFY_APP_ID="$REPLY"
+fi
 
 # =============================================================================
 #  Clone DynamoDB Tables
 # =============================================================================
-section "Cloning DynamoDB Tables"
-if dryrun "Would find tables with '$SOURCE_ENV' and create duplicates with '$TARGET_ENV'"; then :
+section "DynamoDB Tables (Shared)"
+if dryrun "Skipping DynamoDB table creation (using shared database model)"; then :
 else
-  log "Searching for DynamoDB tables matching '*${SOURCE_ENV}*'..."
-  mapfile -t TABLES < <(aws dynamodb list-tables --region "$REGION" --query "TableNames[?contains(@, '$SOURCE_ENV')]" --output text)
-  if [[ ${#TABLES[@]} -eq 0 || -z "${TABLES[0]:-}" ]]; then
-    warn "No tables found matching $SOURCE_ENV."
-  else
-    for T_SOURCE in "${TABLES[@]}"; do
-      T_TARGET="${T_SOURCE//$SOURCE_ENV/$TARGET_ENV}"
-      if aws dynamodb describe-table --region "$REGION" --table-name "$T_TARGET" >/dev/null 2>&1; then
-         warn "Table already exists: $T_TARGET"
-         continue
-      fi
-      log "Cloning Table: $T_SOURCE -> $T_TARGET"
-      
-      SCHEMA="$(aws dynamodb describe-table --region "$REGION" --table-name "$T_SOURCE")"
-      aws dynamodb create-table \
-        --region "$REGION" \
-        --table-name "$T_TARGET" \
-        --attribute-definitions "$(jq -c '.Table.AttributeDefinitions' <<< "$SCHEMA")" \
-        --key-schema "$(jq -c '.Table.KeySchema' <<< "$SCHEMA")" \
-        --billing-mode "PAY_PER_REQUEST" >/dev/null
-        
-      R_TABLES+=("$T_TARGET")
-    done
-  fi
+  log "Using single shared DynamoDB database for all environments (per architecture)."
 fi
 
 # =============================================================================
