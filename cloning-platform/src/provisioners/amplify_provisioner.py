@@ -134,7 +134,7 @@ class AmplifyProvisioner(BaseProvisioner):
     "aws_appsync_graphqlEndpoint": "{env.appsync_graphql_url or 'https://placeholder/graphql'}",
     "aws_appsync_region": "{self.region}",
     "aws_appsync_authenticationType": "API_KEY",
-    "aws_appsync_apiKey": "{env.metadata.get('appsync_api_key', 'da2-placeholder') if hasattr(env, 'metadata') else getattr(env, 'appsync_api_key', 'da2-placeholder')}",
+    "aws_appsync_apiKey": "{env.appsync_api_key}",
     "aws_cognito_identity_pool_id": "{env.identity_pool_id}",
     "aws_cognito_region": "{self.region}",
     "aws_user_pools_id": "{env.user_pool_id}",

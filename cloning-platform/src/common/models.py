@@ -108,6 +108,11 @@ class EnvironmentModel(BaseModel):
     appsync_api_key: str = ""
     admin_email: str = ""
     admin_password: str = ""
+    # Infrastructure fields for full tenant isolation (Audit 3)
+    s3_bucket_name: str = ""
+    cloudfront_url: str = ""
+    dynamodb_table_names: dict[str, str] = Field(default_factory=dict)
+    lambda_function_arns: dict[str, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def set_secret_name(self) -> "EnvironmentModel":

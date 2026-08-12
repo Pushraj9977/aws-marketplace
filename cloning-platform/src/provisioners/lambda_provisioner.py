@@ -137,39 +137,45 @@ class LambdaProvisioner(BaseProvisioner):
         # For the initial release, tables are shared (same name) but injected via env var
         # so future per-tenant tables can be created by the DynamoDB provisioner and
         # inserted into env.dynamodb_table_names without changing this code.
-        table_prefix = env.target_env_name  # reserved for future per-tenant prefix
-
         overrides = {
             "ENV": env.target_env_name,
             "ENV_NAME": env.target_env_name,
             "REGION": self.region,
             "USER_POOL_ID": env.user_pool_id,
             "APP_CLIENT_ID": env.app_client_id,
+            # Secret name — runtime secret lookup
             "SECRET_NAME": env.secret_name,
-            # DynamoDB table names — currently the same as the source env.
-            # When per-tenant tables are provisioned, replace these with
-            # env.dynamodb_table_names.get("USERS_TABLE", "CatEncounter_Users_Table")
-            "USERS_TABLE": f"CatEncounter_Users_Table-{env.target_env_name}",
-            "MEMBERSHIP_TABLE": f"catEncounter_Membership_Table-{env.target_env_name}",
-            "STAFF_TABLE": f"catEncounter_StaffTable-{env.target_env_name}",
-            "THOUGHT_TABLE": f"Thought_Table-{env.target_env_name}",
-            "PICTURE_TABLE": f"Picture_Table-{env.target_env_name}",
-            "EVENT_TABLE": f"catEncounter_Event_Table-{env.target_env_name}",
-            "EVENT_LANDING_NOTES_TABLE": f"Event_Landing_Notes-{env.target_env_name}",
-            "MEMBER_LANDING_NOTES_TABLE": f"Member_Landing_Notes-{env.target_env_name}",
-            "STAFF_LANDING_NOTES_TABLE": f"Staff_Landing_Notes-{env.target_env_name}",
-            "MESSAGE_BOARD_TABLE": f"catEncounter_Dashboard_MessageBoard-{env.target_env_name}",
-            "CHECKIN_TABLE": f"CheckIn_Table-{env.target_env_name}",
-            "STAFF_CHECKIN_TABLE": f"StaffCheckIn_Table-{env.target_env_name}",
-            "RECOMMENDED_EVENT_TABLE": f"CatEncounter_RecommendedEvent-{env.target_env_name}",
-            "STAFF_ASSIGNMENTS_TABLE": f"catEncourageStaffAssignments-{env.target_env_name}",
-            "COMP_CONFIG_TABLE": f"Catalyst_CompConfig-{env.target_env_name}",
-            "ASSESSMENTS_TABLE": f"memberAssessments-{env.target_env_name}",
-            "MEMBER_PLANS_TABLE": f"memberPlans-{env.target_env_name}",
-            "FEELING_METER_TABLE": f"FeelingMeter-{env.target_env_name}",
-            # Other config
-            "S3_BUCKET_NAME": "healthy-aging-buckets-frankfurt-538594436951-eu-central-1-an",
-            "CDN_URL": "https://d3kpamwwj9ilmr.cloudfront.net",
+            "SECRET_MANAGER_KEY": "HealthyLivingProd/catalyst/KeyJune2025",
+            "SECRET_ACCESS_KEY_REGION": self.region,
+            # Cognito / Frontend identifiers
+            "NEXT_PUBLIC_USER_POOL_ID": env.user_pool_id,
+            "NEXT_PUBLIC_CDN_URL": "https://d3kpamwwj9ilmr.cloudfront.net",
+            "NEXT_PUBLIC_S3Bucket": "healthy-aging-buckets-frankfurt-538594436951-eu-central-1-an",
+            # DynamoDB table names — keyed exactly as the Lambda source code reads them
+            "CatEncounter_Users_Table": f"CatEncounter_Users_Table-{env.target_env_name}",
+            "CatEncounter_Membership_Table": f"catEncounter_Membership_Table-{env.target_env_name}",
+            "CatEncounter_StaffTable": f"catEncounter_StaffTable-{env.target_env_name}",
+            "Thought_Table": f"Thought_Table-{env.target_env_name}",
+            "Picture_Table": f"Picture_Table-{env.target_env_name}",
+            "CatEncounter_Event_Table": f"catEncounter_Event_Table-{env.target_env_name}",
+            "Event_Landing_Notes": f"Event_Landing_Notes-{env.target_env_name}",
+            "Member_Landing_Notes": f"Member_Landing_Notes-{env.target_env_name}",
+            "Staff_Landing_Notes": f"Staff_Landing_Notes-{env.target_env_name}",
+            "CatEncounter_Dashboard_MessageBoard": f"catEncounter_Dashboard_MessageBoard-{env.target_env_name}",
+            "CheckIn_Table": f"CheckIn_Table-{env.target_env_name}",
+            "StaffCheckIn_Table": f"StaffCheckIn_Table-{env.target_env_name}",
+            "CatEncounter_RecommendedEvent": f"CatEncounter_RecommendedEvent-{env.target_env_name}",
+            "catEncourageStaffAssignments": f"catEncourageStaffAssignments-{env.target_env_name}",
+            "Catalyst_CompConfig": f"Catalyst_CompConfig-{env.target_env_name}",
+            "memberAssessments": f"memberAssessments-{env.target_env_name}",
+            "memberPlans": f"memberPlans-{env.target_env_name}",
+            "FeelingMeter": f"FeelingMeter-{env.target_env_name}",
+            # Heart Rhythm tables (not tenant-specific — shared)
+            "HeartRhythm_User_Table": "HeartRhythm_User_Table",
+            "HeartRhythm_Prescriptions_Table": "HeartRhythm_Prescriptions_Table",
+            "HeartRhythm_Results_Table": "HeartRhythm_Results_Table",
+            "Heart_Rhythm_Transaction_Log": "Heart_Rhythm_Transaction_Log",
+            "HeartRhythm_Prescriptions_History_Table": "HeartRhythm_Prescriptions_History_Table",
         }
         merged = merge_env_vars(base_vars, overrides)
 
