@@ -346,7 +346,19 @@ fi
 #  Clone Amplify Branch
 # =============================================================================
 section "Amplify Branch Deployment"
-BRANCH_ENV_VARS="ENV_NAME=$TARGET_ENV,USER_POOL_ID=$USER_POOL_ID,APP_CLIENT_ID=$APP_CLIENT_ID,SECRET_NAME=$SECRET_NAME,NEXT_PUBLIC_API_URLS=${API_URLS%,}"
+BRANCH_ENV_VARS="$(jq -n -c \
+  --arg env "$TARGET_ENV" \
+  --arg pool "$USER_POOL_ID" \
+  --arg client "$APP_CLIENT_ID" \
+  --arg secret "$SECRET_NAME" \
+  --arg urls "${API_URLS%,}" \
+  '{
+    ENV_NAME: $env,
+    USER_POOL_ID: $pool,
+    APP_CLIENT_ID: $client,
+    SECRET_NAME: $secret,
+    NEXT_PUBLIC_API_URLS: $urls
+  }')"
 
 if dryrun "Would create Amplify branch '$TARGET_ENV' on app $AMPLIFY_APP_ID"; then :
 else
