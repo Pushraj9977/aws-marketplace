@@ -141,7 +141,7 @@ class CognitoProvisioner(BaseProvisioner):
         password = self._get_admin_password(sm, credentials_secret_name)
 
         try:
-            idp.admin_create_user(  # type: ignore[attr-defined]
+            resp = idp.admin_create_user(  # type: ignore[attr-defined]
                 UserPoolId=pool_id,
                 Username=email,
                 UserAttributes=[
@@ -150,10 +150,17 @@ class CognitoProvisioner(BaseProvisioner):
                 ],
                 MessageAction="SUPPRESS"
             )
-            
+            user_attrs = resp.get("User", {}).get("Attributes", [])
             self.logger.info("Default admin user created", extra={"email": email})
         except idp.exceptions.UsernameExistsException:  # type: ignore[attr-defined]
+            resp = idp.admin_get_user(UserPoolId=pool_id, Username=email)  # type: ignore[attr-defined]
+            user_attrs = resp.get("UserAttributes", [])
             self.logger.warning("Admin user already exists", extra={"email": email})
+
+        # Extract the Cognito sub UUID and update DynamoDB so the frontend staffApi can find the user
+        sub_uuid = next((attr["Value"] for attr in user_attrs if attr["Name"] == "sub"), None)
+        if sub_uuid:
+            self._link_dynamodb_user(env, sub_uuid)
 
         idp.admin_set_user_password(  # type: ignore[attr-defined]
             UserPoolId=pool_id,
@@ -163,6 +170,21 @@ class CognitoProvisioner(BaseProvisioner):
         )
         self._store_admin_credentials(sm, credentials_secret_name, email, password, env)
         return email, password, credentials_secret_name
+
+    def _link_dynamodb_user(self, env: EnvironmentModel, sub_uuid: str) -> None:
+        import re
+        normalized = re.sub(r"[^A-Z0-9]", "", env.target_env_name.upper())
+        staff_id = f"{normalized[:12] or 'TENANT'}-ADMIN"
+        try:
+            ddb = self.get_client("dynamodb")
+            ddb.update_item(
+                TableName="catEncounter_StaffTable",
+                Key={"staffId": {"S": staff_id}},
+                UpdateExpression="SET user_id = :u",
+                ExpressionAttributeValues={":u": {"S": sub_uuid}},
+            )
+        except Exception as e:
+            self.logger.error("Failed to link DynamoDB user", exc_info=e)
 
     @retry(max_attempts=3, delay_seconds=2.0)
     def _create_identity_pool(self, idp: object, user_pool_id: str, app_client_id: str, pool_name: str, env: EnvironmentModel) -> str:

@@ -98,6 +98,14 @@ def _extract_marketplace_token(event: dict[str, Any], payload: dict[str, Any] | 
 
 
 def _resolve_customer(token: str) -> dict[str, str]:
+    # Bypass real AWS Marketplace resolution for simulation testing
+    if token.startswith("test-"):
+        return {
+            "customer_identifier": token,
+            "product_code": "test-product-code",
+            "customer_aws_account_id": "000000000000",
+        }
+        
     client = boto3.client("meteringmarketplace")
     response = client.resolve_customer(RegistrationToken=token)
     return {

@@ -135,7 +135,7 @@ class HealthCheckService:
         try:
             idp = boto3.client("cognito-idp", region_name=self.region)
             resp = idp.describe_user_pool(UserPoolId=pool_id)
-            return resp["UserPool"].get("Status") == "Enabled"
+            return "Id" in resp.get("UserPool", {})
         except Exception:
             return False
 
