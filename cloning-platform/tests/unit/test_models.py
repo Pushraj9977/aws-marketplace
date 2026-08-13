@@ -41,6 +41,18 @@ class TestSubscriberModel:
         assert "." not in name
         assert name == name.lower()
 
+    def test_legacy_camel_case_payload_is_accepted(self):
+        sub = SubscriberModel(
+            regToken="tok-legacy",
+            companyName="Legacy Corp",
+            contactEmail="ADMIN@LEGACY.COM",
+            isDeployed=True,
+        )
+        assert sub.reg_token == "tok-legacy"
+        assert sub.company_name == "Legacy Corp"
+        assert sub.contact_email == "admin@legacy.com"
+        assert sub.is_deployed is True
+
 
 class TestEnvironmentModel:
     def test_secret_name_auto_set(self):

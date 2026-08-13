@@ -148,3 +148,17 @@ class EnvironmentStateManager:
             )
         except Exception as exc:
             raise StateManagerError(f"Failed to update field {field}: {exc}") from exc
+
+    def sync_environment(self, env: EnvironmentModel) -> None:
+        """Persist the top-level mutable environment fields updated during provisioning."""
+        excluded = {
+            "resources",
+            "started_at",
+            "completed_at",
+            "admin_password",
+        }
+        payload = env.model_dump(mode="json", exclude=excluded)
+        payload.pop("environment_id", None)
+        payload.pop("status", None)
+        for field, value in payload.items():
+            self.update_field(env.environment_id, field, value)

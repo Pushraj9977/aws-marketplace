@@ -7,6 +7,7 @@ from src.common.models import EnvironmentModel
 from src.common.constants import ProvisionStep
 from src.provisioners import (
     DynamoDBProvisioner,
+    SeedProvisioner,
     SecretsProvisioner,
     CognitoProvisioner,
     LambdaProvisioner,
@@ -21,6 +22,7 @@ logger = get_logger(__name__)
 # Map Steps to their respective Provisioner classes
 PROVISIONER_MAP = {
     ProvisionStep.PROVISION_DYNAMODB: DynamoDBProvisioner,
+    ProvisionStep.PROVISION_SEED: SeedProvisioner,
     ProvisionStep.PROVISION_SECRETS: SecretsProvisioner,
     ProvisionStep.PROVISION_COGNITO: CognitoProvisioner,
     ProvisionStep.PROVISION_LAMBDA: LambdaProvisioner,

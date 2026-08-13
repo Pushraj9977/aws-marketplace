@@ -106,6 +106,7 @@ SUBSCRIBERS_JSON="$(aws dynamodb scan \
   --expression-attribute-values '{":v1":{"BOOL":false}}')"
 
 COUNT="$(jq -r '.Count' <<< "$SUBSCRIBERS_JSON")"
+ADMIN_EMAIL=""
 if [[ "$COUNT" == "0" ]]; then
   info "No subscribers found with isDeployed = false."
   if [[ -n "$TARGET_ENV_ARG" ]]; then
@@ -116,10 +117,12 @@ if [[ "$COUNT" == "0" ]]; then
     TARGET_ENV="$REPLY"
   fi
   REG_TOKEN="manual-token"
+  ADMIN_EMAIL="admin@$TARGET_ENV.com"
 else
   printf "  ${BOLD}?${RESET} Select a subscriber to deploy:\n"
   mapfile -t TOKENS < <(jq -r '.Items[].regToken.S // .Items[].regToken.S' <<< "$SUBSCRIBERS_JSON")
   mapfile -t COMPANIES < <(jq -r '.Items[].companyName.S // .Items[].companyName.S' <<< "$SUBSCRIBERS_JSON")
+  mapfile -t EMAILS < <(jq -r '.Items[].contactEmail.S // .Items[].contact_email.S // empty' <<< "$SUBSCRIBERS_JSON")
   
   for i in "${!TOKENS[@]}"; do
     printf "    ${CYAN}$((i+1)))${RESET}  ${COMPANIES[$i]}  [Token: ${TOKENS[$i]}]\n"
@@ -134,9 +137,12 @@ else
   
   # Sanitize company name for AWS resource naming
   TARGET_ENV="$(echo "$COMPANY_NAME" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]/-/g')"
+  ADMIN_EMAIL="${EMAILS[$IDX]:-admin@$TARGET_ENV.com}"
   
   ok "Selected subscriber: $COMPANY_NAME ($REG_TOKEN) -> Target Env: $TARGET_ENV"
 fi
+
+ADMIN_BOOTSTRAP_PASSWORD="${DEFAULT_ADMIN_PASSWORD:-@~W@a27Z}"
 
 # =============================================================================
 #  Base Environment & Configuration
@@ -241,6 +247,25 @@ else
     APP_CLIENT_ID="$(aws cognito-idp list-user-pool-clients --region "$REGION" --user-pool-id "$USER_POOL_ID" --query 'UserPoolClients[0].ClientId' --output text)"
   fi
   ok "App client configured: $APP_CLIENT_ID"
+
+  log "Creating initial admin user in Cognito..."
+  if dryrun "Would create admin user: $ADMIN_EMAIL"; then :
+  else
+    aws cognito-idp admin-create-user \
+      --region "$REGION" \
+      --user-pool-id "$USER_POOL_ID" \
+      --username "$ADMIN_EMAIL" \
+      --user-attributes Name=email,Value="$ADMIN_EMAIL" Name=email_verified,Value=true \
+      --message-action SUPPRESS >/dev/null 2>&1 || true
+      
+    aws cognito-idp admin-set-user-password \
+      --region "$REGION" \
+      --user-pool-id "$USER_POOL_ID" \
+      --username "$ADMIN_EMAIL" \
+      --password "$ADMIN_BOOTSTRAP_PASSWORD" \
+      --permanent >/dev/null 2>&1 || true
+    ok "Cognito admin user created and password set."
+  fi
 fi
 
 # =============================================================================
@@ -435,7 +460,7 @@ else
   python3 /home/user/Downloads/Automation\ \ 2/Automation\ /aws-marketplace-soft-launch/e2e_role_validation_test.py \
     --env "$TARGET_ENV" \
     --url "https://${TARGET_ENV}.d246slprgvqfid.amplifyapp.com" \
-    --username "admin@${TARGET_ENV}.com" \
+    --username "$ADMIN_EMAIL" \
     --password "$TEST_PASSWORD"
 
   if [[ $? -eq 0 ]]; then
@@ -444,4 +469,3 @@ else
     warn "E2E Validation Failed!"
   fi
 fi
-

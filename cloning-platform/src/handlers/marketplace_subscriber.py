@@ -64,6 +64,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         return {
             "statusCode": 200,
+            "headers": _cors_headers(),
             "body": json.dumps({
                 "message": "Provisioning started",
                 "reg_token": subscriber.reg_token,
@@ -73,10 +74,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     except ValidationError as exc:
         logger.error("Validation error: %s", exc.message)
-        return {"statusCode": 400, "body": json.dumps({"error": exc.message})}
+        return {"statusCode": 400, "headers": _cors_headers(), "body": json.dumps({"error": exc.message})}
     except Exception as exc:
         logger.error("Unhandled error: %s", str(exc))
-        return {"statusCode": 500, "body": json.dumps({"error": str(exc)})}
+        return {"statusCode": 500, "headers": _cors_headers(), "body": json.dumps({"error": str(exc)})}
 
 
 def _extract_payload(event: dict[str, Any]) -> dict[str, Any]:
@@ -96,6 +97,7 @@ def _extract_payload(event: dict[str, Any]) -> dict[str, Any]:
 
 def _parse_subscriber(payload: dict[str, Any]) -> SubscriberModel:
     """Validate and parse the subscriber payload."""
+    payload = _normalize_payload(payload)
     required = ["reg_token", "company_name", "contact_email"]
     missing = [f for f in required if not payload.get(f)]
     if missing:
@@ -105,6 +107,29 @@ def _parse_subscriber(payload: dict[str, Any]) -> SubscriberModel:
         return SubscriberModel(**payload)
     except Exception as exc:
         raise ValidationError(f"Invalid subscriber data: {exc}") from exc
+
+
+def _normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(payload)
+    field_map = {
+        "regToken": "reg_token",
+        "companyName": "company_name",
+        "contactEmail": "contact_email",
+        "contactPerson": "contact_person",
+        "contactPhone": "contact_phone",
+    }
+    for legacy_key, canonical_key in field_map.items():
+        if legacy_key in normalized and canonical_key not in normalized:
+            normalized[canonical_key] = normalized[legacy_key]
+    return normalized
+
+
+def _cors_headers() -> dict[str, str]:
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Methods": "OPTIONS,POST",
+    }
 
 
 def _start_pipeline(subscriber: SubscriberModel) -> str:

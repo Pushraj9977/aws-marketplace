@@ -7,6 +7,6 @@ architecture = "x86_64"
 handler = "src.handlers.pipeline_worker.handler"
 manifest_hash = ""
 packagetype = "Zip"
-functions = ["PipelineWorkerFunction", "MarketplaceSubscriberFunction", "HealthCheckFunction", "ReportGeneratorFunction"]
+functions = ["PipelineWorkerFunction", "MarketplaceSubscriberFunction", "MarketplaceLandingFunction", "MarketplaceLandingRegisterFunction", "HealthCheckFunction", "ReportGeneratorFunction"]
 
 [layer_build_definitions]

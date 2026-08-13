@@ -6,6 +6,7 @@ from .lambda_provisioner import LambdaProvisioner
 from .apigateway_provisioner import APIGatewayProvisioner
 from .amplify_provisioner import AmplifyProvisioner
 from .appsync_provisioner import AppSyncProvisioner
+from .seed_provisioner import SeedProvisioner
 
 __all__ = [
     "BaseProvisioner",
@@ -15,5 +16,6 @@ __all__ = [
     "LambdaProvisioner",
     "APIGatewayProvisioner",
     "AmplifyProvisioner",
-    "AppSyncProvisioner"
+    "AppSyncProvisioner",
+    "SeedProvisioner"
 ]

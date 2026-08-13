@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import boto3
+from boto3.dynamodb.conditions import Attr
 
 from ..common.constants import EnvironmentStatus
 from ..common.exceptions import StateManagerError, SubscriberNotFoundError
@@ -39,11 +40,7 @@ class SubscriberStateManager:
             StateManagerError: On DynamoDB write failure.
         """
         try:
-            item = subscriber.model_dump(mode="json")
-            item["created_at"] = subscriber.created_at.isoformat()
-            
-            # Map snake_case to legacy camelCase DynamoDB schema
-            item["regToken"] = item.pop("reg_token")
+            item = self._to_item(subscriber)
 
             self._table.put_item(
                 Item=item,
@@ -78,12 +75,8 @@ class SubscriberStateManager:
                 raise SubscriberNotFoundError(
                     f"Subscriber not found: {reg_token}", resource_id=reg_token
                 )
-            
-            # Map back to snake_case for Pydantic
-            if "regToken" in item:
-                item["reg_token"] = item.pop("regToken")
-                
-            return SubscriberModel.model_validate(item)
+
+            return self._from_item(item)
         except SubscriberNotFoundError:
             raise
         except Exception as exc:
@@ -101,7 +94,7 @@ class SubscriberStateManager:
             self._table.update_item(
                 Key={"regToken": reg_token},
                 UpdateExpression=(
-                    "SET is_deployed = :d, #s = :s, environment_id = :e, deployed_at = :t"
+                    "SET isDeployed = :d, #s = :s, environmentId = :e, deployedAt = :t"
                 ),
                 ExpressionAttributeNames={"#s": "status"},
                 ExpressionAttributeValues={
@@ -143,14 +136,53 @@ class SubscriberStateManager:
         """
         try:
             resp = self._table.scan(
-                FilterExpression="is_deployed = :v",
-                ExpressionAttributeValues={":v": False},
+                FilterExpression=(
+                    Attr("isDeployed").eq(False)
+                    | Attr("isDeployed").eq("false")
+                    | Attr("status").eq(EnvironmentStatus.PENDING.value)
+                ),
             )
             subscribers = []
             for item in resp.get("Items", []):
-                if "regToken" in item:
-                    item["reg_token"] = item.pop("regToken")
-                subscribers.append(SubscriberModel.model_validate(item))
+                subscriber = self._from_item(item)
+                if not subscriber.is_deployed:
+                    subscribers.append(subscriber)
             return subscribers
         except Exception as exc:
             raise StateManagerError(f"Failed to list pending subscribers: {exc}") from exc
+
+    def _to_item(self, subscriber: SubscriberModel) -> dict:
+        return {
+            "regToken": subscriber.reg_token,
+            "companyName": subscriber.company_name,
+            "contactEmail": subscriber.contact_email,
+            "contactPerson": subscriber.contact_person,
+            "contactPhone": subscriber.contact_phone,
+            "createdAt": subscriber.created_at.isoformat(),
+            "isDeployed": subscriber.is_deployed,
+            "status": subscriber.status,
+            "targetEnvName": subscriber.target_env_name,
+            "environmentId": subscriber.environment_id,
+        }
+
+    def _from_item(self, item: dict) -> SubscriberModel:
+        normalized = dict(item)
+        if "createdAt" in normalized and "created_at" not in normalized:
+            normalized["created_at"] = normalized["createdAt"]
+        if "regToken" in normalized and "reg_token" not in normalized:
+            normalized["reg_token"] = normalized["regToken"]
+        if "companyName" in normalized and "company_name" not in normalized:
+            normalized["company_name"] = normalized["companyName"]
+        if "contactEmail" in normalized and "contact_email" not in normalized:
+            normalized["contact_email"] = normalized["contactEmail"]
+        if "contactPerson" in normalized and "contact_person" not in normalized:
+            normalized["contact_person"] = normalized["contactPerson"]
+        if "contactPhone" in normalized and "contact_phone" not in normalized:
+            normalized["contact_phone"] = normalized["contactPhone"]
+        if "isDeployed" in normalized and "is_deployed" not in normalized:
+            normalized["is_deployed"] = normalized["isDeployed"]
+        if "targetEnvName" in normalized and "target_env_name" not in normalized:
+            normalized["target_env_name"] = normalized["targetEnvName"]
+        if "environmentId" in normalized and "environment_id" not in normalized:
+            normalized["environment_id"] = normalized["environmentId"]
+        return SubscriberModel.model_validate(normalized)

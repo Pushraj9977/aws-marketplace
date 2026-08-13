@@ -111,6 +111,8 @@ class HealthCheckService:
         from ..common.constants import ResourceType
         for key, record in env.resources.items():
             if ResourceType.DYNAMODB_TABLE in key:
+                if record.metadata.get("skipped") or record.target_id == "shared-database":
+                    return []
                 return record.target_id.split(",") if record.target_id else []
         return []
 

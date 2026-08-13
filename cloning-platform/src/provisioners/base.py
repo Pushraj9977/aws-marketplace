@@ -80,6 +80,7 @@ class BaseProvisioner(ABC):
 
         try:
             record = self._create(env)
+            self.state_manager.sync_environment(env)
             record.status = ResourceStatus.DONE
             self.state_manager.upsert_resource(env.environment_id, record)
             self.logger.info(

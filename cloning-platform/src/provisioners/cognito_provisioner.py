@@ -3,6 +3,11 @@ cognito_provisioner.py — Clone Cognito User Pool + App Client for a new tenant
 """
 from __future__ import annotations
 
+import json
+import os
+import secrets
+import string
+
 from ..common.constants import ResourceType
 from ..common.models import EnvironmentModel, ResourceRecord
 from ..common.utils import retry
@@ -36,9 +41,16 @@ class CognitoProvisioner(BaseProvisioner):
         env.app_client_id = app_client_id
 
         # Create Admin User
-        admin_email, admin_password = self._create_admin_user(idp, pool_id, env)
+        sm = self.get_client("secretsmanager")
+        admin_email, admin_password, credentials_secret_name = self._create_admin_user(
+            idp,
+            sm,
+            pool_id,
+            env,
+        )
         env.admin_email = admin_email
         env.admin_password = admin_password
+        env.admin_credentials_secret_name = credentials_secret_name
 
         # Create Identity Pool
         id_pool_id = self._create_identity_pool(idp, pool_id, app_client_id, pool_name, env)
@@ -53,7 +65,7 @@ class CognitoProvisioner(BaseProvisioner):
                 "app_client_id": app_client_id,
                 "pool_name": pool_name,
                 "admin_email": admin_email,
-                "admin_password": admin_password,
+                "admin_credentials_secret_name": credentials_secret_name,
                 "identity_pool_id": id_pool_id,
             },
         )
@@ -110,22 +122,25 @@ class CognitoProvisioner(BaseProvisioner):
             self.logger.info("App Client created", extra={"client_id": client_id})
             return client_id
         except Exception:
-            # If creation fails, fetch existing client
-            clients = idp.list_user_pool_clients(  # type: ignore[attr-defined]
-                UserPoolId=pool_id, MaxResults=10
-            )
-            if clients.get("UserPoolClients"):
-                return clients["UserPoolClients"][0]["ClientId"]
+            existing_client_id = self._find_existing_client(idp, pool_id, client_name)
+            if existing_client_id:
+                return existing_client_id
             raise
 
     @retry(max_attempts=3, delay_seconds=2.0)
-    def _create_admin_user(self, idp: object, pool_id: str, env: EnvironmentModel) -> tuple[str, str]:
+    def _create_admin_user(
+        self,
+        idp: object,
+        sm: object,
+        pool_id: str,
+        env: EnvironmentModel,
+    ) -> tuple[str, str, str]:
         """Create a default admin user with a permanent password."""
-        email = f"admin@{env.target_env_name}.com"
-        password = "@~W@a27Z"  # Minimum 8, Upper, Lower, Number
+        email = env.contact_email or f"admin@{env.target_env_name}.com"
+        credentials_secret_name = f"{env.target_env_name}/admin-bootstrap"
+        password = self._get_admin_password(sm, credentials_secret_name)
 
         try:
-            # 1. Create the user
             idp.admin_create_user(  # type: ignore[attr-defined]
                 UserPoolId=pool_id,
                 Username=email,
@@ -136,19 +151,18 @@ class CognitoProvisioner(BaseProvisioner):
                 MessageAction="SUPPRESS"
             )
             
-            # 2. Set permanent password
-            idp.admin_set_user_password(  # type: ignore[attr-defined]
-                UserPoolId=pool_id,
-                Username=email,
-                Password=password,
-                Permanent=True
-            )
-            
             self.logger.info("Default admin user created", extra={"email": email})
         except idp.exceptions.UsernameExistsException:  # type: ignore[attr-defined]
             self.logger.warning("Admin user already exists", extra={"email": email})
-            
-        return email, password
+
+        idp.admin_set_user_password(  # type: ignore[attr-defined]
+            UserPoolId=pool_id,
+            Username=email,
+            Password=password,
+            Permanent=True,
+        )
+        self._store_admin_credentials(sm, credentials_secret_name, email, password, env)
+        return email, password, credentials_secret_name
 
     @retry(max_attempts=3, delay_seconds=2.0)
     def _create_identity_pool(self, idp: object, user_pool_id: str, app_client_id: str, pool_name: str, env: EnvironmentModel) -> str:
@@ -241,6 +255,72 @@ class CognitoProvisioner(BaseProvisioner):
             self.logger.info("Attached IAM roles to identity pool", extra={"identity_pool_id": pool_id})
         except Exception as e:
             self.logger.warning(f"Failed to set identity pool roles: {e}")
+
+    def _find_existing_client(self, idp: object, pool_id: str, client_name: str) -> str:
+        clients = idp.list_user_pool_clients(  # type: ignore[attr-defined]
+            UserPoolId=pool_id,
+            MaxResults=60,
+        )
+        for client in clients.get("UserPoolClients", []):
+            if client["ClientName"] == client_name:
+                return client["ClientId"]
+        if clients.get("UserPoolClients"):
+            return clients["UserPoolClients"][0]["ClientId"]
+        return ""
+
+    def _get_admin_password(self, sm: object, secret_name: str) -> str:
+        try:
+            existing = sm.get_secret_value(SecretId=secret_name)  # type: ignore[attr-defined]
+            payload = json.loads(existing.get("SecretString", "{}"))
+            password = payload.get("admin_password")
+            if password:
+                return str(password)
+        except Exception:
+            pass
+
+        configured = os.environ.get("DEFAULT_ADMIN_PASSWORD", "").strip()
+        if configured:
+            return configured
+        return self._generate_password()
+
+    def _generate_password(self, length: int = 16) -> str:
+        alphabet = string.ascii_letters + string.digits
+        password = [
+            secrets.choice(string.ascii_uppercase),
+            secrets.choice(string.ascii_lowercase),
+            secrets.choice(string.digits),
+            secrets.choice("!@#$%^&*"),
+        ]
+        password.extend(secrets.choice(alphabet) for _ in range(max(length - len(password), 8)))
+        secrets.SystemRandom().shuffle(password)
+        return "".join(password)
+
+    def _store_admin_credentials(
+        self,
+        sm: object,
+        secret_name: str,
+        email: str,
+        password: str,
+        env: EnvironmentModel,
+    ) -> None:
+        payload = json.dumps({
+            "admin_email": email,
+            "admin_password": password,
+            "user_pool_id": env.user_pool_id,
+            "app_client_id": env.app_client_id,
+        })
+        try:
+            sm.create_secret(  # type: ignore[attr-defined]
+                Name=secret_name,
+                Description=f"Bootstrap admin credentials for {env.target_env_name}",
+                SecretString=payload,
+                Tags=[
+                    {"Key": "Environment", "Value": env.target_env_name},
+                    {"Key": "ManagedBy", "Value": "CloningPlatform"},
+                ],
+            )
+        except sm.exceptions.ResourceExistsException:  # type: ignore[attr-defined]
+            sm.put_secret_value(SecretId=secret_name, SecretString=payload)  # type: ignore[attr-defined]
 
     def validate(self, record: ResourceRecord) -> bool:
         idp = self.get_client("cognito-idp")

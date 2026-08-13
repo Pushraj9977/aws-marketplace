@@ -1,12 +1,9 @@
 import time
 from typing import Any
 
-from pydantic import ConfigDict
-
 from .base import BaseProvisioner
 from ..common.constants import ResourceType
 from ..common.models import EnvironmentModel, ResourceRecord
-from ..common.utils import retry
 
 class AppSyncProvisioner(BaseProvisioner):
     """
@@ -147,15 +144,14 @@ class AppSyncProvisioner(BaseProvisioner):
                 create_args["serviceRoleArn"] = ds["serviceRoleArn"]
             
             if ds_type == "AMAZON_DYNAMODB":
-                config = ds["dynamodbConfig"]
-                # Swap table name
+                config = dict(ds["dynamodbConfig"])
                 old_table = config["tableName"]
-                new_table = old_table.replace(env.source_env_name, env.target_env_name)
+                new_table = env.dynamodb_table_names.get(old_table, old_table)
                 config["tableName"] = new_table
                 create_args["dynamodbConfig"] = config
                 
             elif ds_type == "AWS_LAMBDA":
-                config = ds["lambdaConfig"]
+                config = dict(ds["lambdaConfig"])
                 old_arn = config["lambdaFunctionArn"]
                 new_arn = old_arn.replace(env.source_env_name, env.target_env_name)
                 config["lambdaFunctionArn"] = new_arn

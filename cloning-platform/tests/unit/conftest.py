@@ -51,8 +51,8 @@ def dynamodb_subscribers_table(aws_credentials):
         ddb = boto3.resource("dynamodb", region_name="eu-central-1")
         table = ddb.create_table(
             TableName="MarketplaceSubscribers",
-            KeySchema=[{"AttributeName": "reg_token", "KeyType": "HASH"}],
-            AttributeDefinitions=[{"AttributeName": "reg_token", "AttributeType": "S"}],
+            KeySchema=[{"AttributeName": "regToken", "KeyType": "HASH"}],
+            AttributeDefinitions=[{"AttributeName": "regToken", "AttributeType": "S"}],
             BillingMode="PAY_PER_REQUEST",
         )
         yield table

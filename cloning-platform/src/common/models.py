@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .constants import EnvironmentStatus, ResourceStatus, ResourceType
 
@@ -37,18 +37,25 @@ class ResourceRecord(BaseModel):
 class SubscriberModel(BaseModel):
     """Represents a row in the MarketplaceSubscribers DynamoDB table."""
 
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True, populate_by_name=True)
 
-    reg_token: str = Field(..., description="Primary key — unique registration token from Marketplace")
-    company_name: str
-    contact_email: str
-    contact_person: str = ""
-    contact_phone: str = ""
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    is_deployed: bool = False
+    reg_token: str = Field(
+        ...,
+        description="Primary key — unique registration token from Marketplace",
+        validation_alias=AliasChoices("reg_token", "regToken"),
+    )
+    company_name: str = Field(validation_alias=AliasChoices("company_name", "companyName"))
+    contact_email: str = Field(validation_alias=AliasChoices("contact_email", "contactEmail"))
+    contact_person: str = Field(default="", validation_alias=AliasChoices("contact_person", "contactPerson"))
+    contact_phone: str = Field(default="", validation_alias=AliasChoices("contact_phone", "contactPhone"))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        validation_alias=AliasChoices("created_at", "createdAt"),
+    )
+    is_deployed: bool = Field(default=False, validation_alias=AliasChoices("is_deployed", "isDeployed"))
     status: EnvironmentStatus = EnvironmentStatus.PENDING
-    target_env_name: str = ""
-    environment_id: str = ""
+    target_env_name: str = Field(default="", validation_alias=AliasChoices("target_env_name", "targetEnvName"))
+    environment_id: str = Field(default="", validation_alias=AliasChoices("environment_id", "environmentId"))
 
     @field_validator("company_name")
     @classmethod
@@ -108,6 +115,7 @@ class EnvironmentModel(BaseModel):
     appsync_api_key: str = ""
     admin_email: str = ""
     admin_password: str = ""
+    admin_credentials_secret_name: str = ""
     # Infrastructure fields for full tenant isolation (Audit 3)
     s3_bucket_name: str = ""
     cloudfront_url: str = ""

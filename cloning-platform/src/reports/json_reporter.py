@@ -61,7 +61,7 @@ class JSONReporter:
             },
             "credentials": {
                 "admin_email": getattr(env, "admin_email", ""),
-                "admin_password": getattr(env, "admin_password", ""),
+                "admin_credentials_secret_name": getattr(env, "admin_credentials_secret_name", ""),
             },
             "summary": {
                 "total_resources": len(resources),

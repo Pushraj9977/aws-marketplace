@@ -10,20 +10,22 @@
   <link rel="stylesheet" href="style.css">
   <title>Registration page</title>
 </head>
-<body class="text-center">
+<body class="text-center" data-api-base-url="">
   <div class="container">
     <div id="alert"></div>
+    <div id="status" class="small text-muted mb-3"></div>
     <form class="form-signin" method="POST" enctype="multipart/form-data">
       <img class="mb-4" src="logo.png" alt="" width="72" height="72">
-      <h1 class="h3 mb-3 font-weight-normal">Please enter your contact details</h1>
-      <label for="companyName" class="sr-only">Company name</label>
-      <input type="text" name="companyName" class="form-control" placeholder="Company name" required autofocus>
-      <label for="contactPerson" class="sr-only">Contact person</label>
-      <input type="text" name="contactPerson" class="form-control" placeholder="Contact person" required autofocus>
-      <label for="Contact phone" class="sr-only">Contact phone</label>
-      <input type="tel" name="contactPhone" class="form-control" placeholder="Contact phone" required autofocus>
-      <label for="contactEmail" class="sr-only">Email address</label>
-      <input type="email" name="contactEmail" class="form-control" placeholder="Email address" required autofocus>
+      <h1 class="h3 mb-3 font-weight-normal">Complete your AWS Marketplace onboarding</h1>
+      <p class="text-muted small">We will verify your subscription, collect your tenant details, and start provisioning your environment.</p>
+      <label for="company_name" class="sr-only">Company name</label>
+      <input type="text" name="company_name" class="form-control" placeholder="Company name" required autofocus>
+      <label for="contact_email" class="sr-only">Admin email</label>
+      <input type="email" name="contact_email" class="form-control" placeholder="Admin email" required>
+      <label for="contact_person" class="sr-only">Contact person</label>
+      <input type="text" name="contact_person" class="form-control" placeholder="Contact person (optional)">
+      <label for="contact_phone" class="sr-only">Contact phone</label>
+      <input type="tel" name="contact_phone" class="form-control" placeholder="Contact phone (optional)">
       <button class="btn btn-lg btn-primary btn-block" type="submit">Register</button>
       <p class="mt-5 mb-3 text-muted">&copy; 2024</p>
     </form>
