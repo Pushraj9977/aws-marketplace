@@ -7,6 +7,7 @@ from .apigateway_provisioner import APIGatewayProvisioner
 from .amplify_provisioner import AmplifyProvisioner
 from .appsync_provisioner import AppSyncProvisioner
 from .seed_provisioner import SeedProvisioner
+from .s3_frontend_provisioner import S3FrontendProvisioner
 
 __all__ = [
     "BaseProvisioner",
@@ -17,5 +18,6 @@ __all__ = [
     "APIGatewayProvisioner",
     "AmplifyProvisioner",
     "AppSyncProvisioner",
-    "SeedProvisioner"
+    "SeedProvisioner",
+    "S3FrontendProvisioner",
 ]

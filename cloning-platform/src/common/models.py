@@ -121,6 +121,8 @@ class EnvironmentModel(BaseModel):
     cloudfront_url: str = ""
     dynamodb_table_names: dict[str, str] = Field(default_factory=dict)
     lambda_function_arns: dict[str, str] = Field(default_factory=dict)
+    # S3-hosted Assess frontend URL (set by S3FrontendProvisioner)
+    assess_url: str = ""
 
     @model_validator(mode="after")
     def set_secret_name(self) -> "EnvironmentModel":

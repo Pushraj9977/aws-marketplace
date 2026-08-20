@@ -91,6 +91,13 @@ Resources:
             Parameters:
               step: PROVISION_API_GATEWAY
               environment.$: "$.environment"
+            Next: ProvisionAssessFrontend
+          ProvisionAssessFrontend:
+            Type: Task
+            Resource: !GetAtt PipelineWorkerFunction.Arn
+            Parameters:
+              step: PROVISION_S3_FRONTEND
+              environment.$: "$.environment"
             Next: ProvisionAmplify
           ProvisionAmplify:
             Type: Task

@@ -13,7 +13,8 @@ from src.provisioners import (
     LambdaProvisioner,
     APIGatewayProvisioner,
     AppSyncProvisioner,
-    AmplifyProvisioner
+    AmplifyProvisioner,
+    S3FrontendProvisioner,
 )
 from src.state.environment_state_manager import EnvironmentStateManager
 
@@ -28,6 +29,7 @@ PROVISIONER_MAP = {
     ProvisionStep.PROVISION_LAMBDA: LambdaProvisioner,
     ProvisionStep.PROVISION_API_GATEWAY: APIGatewayProvisioner,
     ProvisionStep.PROVISION_APPSYNC: AppSyncProvisioner,
+    ProvisionStep.PROVISION_S3_FRONTEND: S3FrontendProvisioner,
     ProvisionStep.PROVISION_AMPLIFY: AmplifyProvisioner,
 }
 
