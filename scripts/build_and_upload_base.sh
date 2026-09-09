@@ -19,11 +19,11 @@ cd "$ASSESS_DIR"
 # Install dependencies if node_modules is missing
 if [ ! -d "node_modules" ]; then
     echo "[INFO] Installing dependencies..."
-    yarn install
+    npm install --legacy-peer-deps
 fi
 
 echo "[INFO] Running production build..."
-yarn build
+npm run build
 
 echo "[INFO] Build complete. Output: $ASSESS_DIR/build/"
 ls -la build/

@@ -219,8 +219,17 @@ Resources:
     Properties:
       CodeUri: .
       Handler: src.handlers.report_generator.handler
+      Environment:
+        Variables:
+          SES_SENDER_EMAIL: "act1@alliancecaretech.com"
       Policies:
         - AdministratorAccess
+        - Statement:
+            Effect: Allow
+            Action:
+              - ses:SendEmail
+              - ses:SendRawEmail
+            Resource: "*"
 
 Outputs:
   ApiEndpoint:
