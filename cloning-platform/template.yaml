@@ -2,6 +2,11 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: AWS Environment Cloning Platform
 
+Parameters:
+  SubscriberTableStreamArn:
+    Type: String
+    Description: ARN of the DynamoDB Stream for the MarketplaceSubscribers table
+
 Globals:
   Function:
     Runtime: python3.12
@@ -149,11 +154,15 @@ Resources:
         - StepFunctionsExecutionPolicy:
             StateMachineName: !GetAtt CloningStateMachine.Name
       Events:
-        ApiEvent:
-          Type: Api
+        StreamEvent:
+          Type: DynamoDB
           Properties:
-            Path: /register
-            Method: post
+            Stream: !Ref SubscriberTableStreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 1
+            FilterCriteria:
+              Filters:
+                - Pattern: '{"eventName": ["INSERT"]}'
 
   MarketplaceLandingFunction:
     Type: AWS::Serverless::Function
@@ -232,9 +241,6 @@ Resources:
             Resource: "*"
 
 Outputs:
-  ApiEndpoint:
-    Description: "API Gateway endpoint URL for POST /register"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/register/"
   StateMachineArn:
     Description: "Cloning Step Function ARN"
     Value: !Ref CloningStateMachine

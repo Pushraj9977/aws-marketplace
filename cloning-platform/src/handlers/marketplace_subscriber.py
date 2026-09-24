@@ -18,6 +18,8 @@ from typing import Any
 
 import boto3
 
+from boto3.dynamodb.types import TypeDeserializer
+
 from ..common.config import get_config
 from ..common.exceptions import ValidationError
 from ..common.logger import get_logger
@@ -43,18 +45,25 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     logger.info("MarketplaceSubscriberHandler invoked")
 
     try:
+        is_dynamo_event = "Records" in event and len(event["Records"]) > 0 and "dynamodb" in event["Records"][0]
         payload = _extract_payload(event)
+        
+        # If the payload extraction failed (e.g., non-INSERT event), payload might be None
+        if not payload and is_dynamo_event:
+            return {"statusCode": 200, "body": "Skipped non-INSERT event"}
+
         subscriber = _parse_subscriber(payload)
 
-        state_mgr = SubscriberStateManager(
-            table_name=config.subscribers_table,
-            region=config.region,
-        )
-        state_mgr.put(subscriber)
-        logger.info(
-            "Subscriber written to DB",
-            extra={"reg_token": subscriber.reg_token},
-        )
+        if not is_dynamo_event:
+            state_mgr = SubscriberStateManager(
+                table_name=config.subscribers_table,
+                region=config.region,
+            )
+            state_mgr.put(subscriber)
+            logger.info(
+                "Subscriber written to DB",
+                extra={"reg_token": subscriber.reg_token},
+            )
 
         execution_arn = _start_pipeline(subscriber)
         logger.info(
@@ -81,11 +90,27 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def _extract_payload(event: dict[str, Any]) -> dict[str, Any]:
-    """Handle SQS, API Gateway, and direct invocation event formats."""
-    # SQS batch
-    if "Records" in event:
-        body = event["Records"][0].get("body", "{}")
-        return json.loads(body) if isinstance(body, str) else body
+    """Handle SQS, API Gateway, DynamoDB Stream, and direct invocation event formats."""
+    if "Records" in event and len(event["Records"]) > 0:
+        record = event["Records"][0]
+        
+        # DynamoDB Stream
+        if "dynamodb" in record:
+            # We only care about inserts to avoid infinite loops and duplicate clones
+            if record.get("eventName") != "INSERT":
+                logger.info(f"Ignoring non-INSERT DynamoDB event: {record.get('eventName')}")
+                return {}
+                
+            new_image = record["dynamodb"].get("NewImage", {})
+            deserializer = TypeDeserializer()
+            raw = {k: deserializer.deserialize(v) for k, v in new_image.items()}
+            # Normalize camelCase DynamoDB keys → snake_case before validation
+            return _normalize_payload(raw)
+
+        # SQS batch
+        if "body" in record:
+            body = record["body"]
+            return json.loads(body) if isinstance(body, str) else body
 
     # API Gateway HTTP
     if "body" in event:

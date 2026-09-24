@@ -80,6 +80,13 @@ class CognitoProvisioner(BaseProvisioner):
 
     @retry(max_attempts=3, delay_seconds=3.0)
     def _create_pool(self, idp: object, pool_name: str, env: EnvironmentModel) -> str:
+        # SES ARN for production email sending (avoids Cognito default 50/day limit)
+        ses_source_arn = os.environ.get(
+            "SES_SOURCE_ARN",
+            "arn:aws:ses:eu-central-1:215116348101:identity/act1@alliancecaretech.com",
+        )
+        ses_from_email = os.environ.get("SES_FROM_EMAIL", "act1@alliancecaretech.com")
+
         resp = idp.create_user_pool(  # type: ignore[attr-defined]
             PoolName=pool_name,
             AutoVerifiedAttributes=["email"],
@@ -94,6 +101,34 @@ class CognitoProvisioner(BaseProvisioner):
                     "RequireSymbols": False,
                 }
             },
+            # Use SES for reliable email delivery (no 50/day sandbox limit)
+            EmailConfiguration={
+                "EmailSendingAccount": "DEVELOPER",
+                "SourceArn": ses_source_arn,
+                "From": ses_from_email,
+            },
+            # Custom attributes required by the Assess React frontend (Signup.tsx)
+            # Auth.signUp sends: custom:firstName, custom:lastName, custom:phone
+            Schema=[
+                {
+                    "Name": "firstName",
+                    "AttributeDataType": "String",
+                    "Mutable": True,
+                    "StringAttributeConstraints": {"MinLength": "0", "MaxLength": "256"},
+                },
+                {
+                    "Name": "lastName",
+                    "AttributeDataType": "String",
+                    "Mutable": True,
+                    "StringAttributeConstraints": {"MinLength": "0", "MaxLength": "256"},
+                },
+                {
+                    "Name": "phone",
+                    "AttributeDataType": "String",
+                    "Mutable": True,
+                    "StringAttributeConstraints": {"MinLength": "0", "MaxLength": "32"},
+                },
+            ],
             UserPoolTags={
                 "Environment": env.target_env_name,
                 "ManagedBy": "CloningPlatform",
@@ -116,6 +151,16 @@ class CognitoProvisioner(BaseProvisioner):
                     "ALLOW_REFRESH_TOKEN_AUTH",
                     "ALLOW_USER_SRP_AUTH",
                     "ALLOW_ADMIN_USER_PASSWORD_AUTH",
+                ],
+                # Required: custom attributes must be explicitly listed for R/W
+                # The Assess frontend (Signup.tsx) writes: custom:firstName, custom:lastName, custom:phone
+                WriteAttributes=[
+                    "email", "given_name", "family_name", "name", "phone_number",
+                    "custom:firstName", "custom:lastName", "custom:phone",
+                ],
+                ReadAttributes=[
+                    "email", "given_name", "family_name", "name", "phone_number", "sub",
+                    "custom:firstName", "custom:lastName", "custom:phone",
                 ],
             )
             client_id: str = resp["UserPoolClient"]["ClientId"]

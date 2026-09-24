@@ -10,24 +10,52 @@
   <link rel="stylesheet" href="style.css">
   <title>Registration page</title>
 </head>
-<body class="text-center" data-api-base-url="https://penuu7szkh.execute-api.eu-central-1.amazonaws.com/Prod">
+<body class="text-center">
   <div class="container">
     <div id="alert"></div>
-    <div id="status" class="small text-muted mb-3"></div>
     <form class="form-signin" method="POST" enctype="multipart/form-data">
       <img class="mb-4" src="logo.png" alt="" width="72" height="72">
-      <h1 class="h3 mb-3 font-weight-normal">Complete your AWS Marketplace onboarding</h1>
-      <p class="text-muted small">We will verify your subscription, collect your tenant details, and start provisioning your environment.</p>
-      <label for="company_name" class="sr-only">Company name</label>
-      <input type="text" name="company_name" class="form-control" placeholder="Company name" required autofocus>
-      <label for="contact_email" class="sr-only">Admin email</label>
-      <input type="email" name="contact_email" class="form-control" placeholder="Admin email" required>
-      <label for="contact_person" class="sr-only">Contact person</label>
-      <input type="text" name="contact_person" class="form-control" placeholder="Contact person (optional)">
-      <label for="contact_phone" class="sr-only">Contact phone</label>
-      <input type="tel" name="contact_phone" class="form-control" placeholder="Contact phone (optional)">
-      <button class="btn btn-lg btn-primary btn-block" type="submit">Register</button>
-      <p class="mt-5 mb-3 text-muted">&copy; 2024</p>
+      <h1 class="h3 mb-3 font-weight-normal">Please enter your details</h1>
+      
+      <div class="form-group text-left">
+        <label for="companyName" class="font-weight-bold">Company Name</label>
+        <input type="text" id="companyName" name="companyName" class="form-control" placeholder="" required autofocus>
+        <small class="form-text text-muted mt-1">Please provide the company name</small>
+      </div>
+
+      <div class="form-group text-left">
+        <label for="contactPerson" class="font-weight-bold">Contact Name</label>
+        <input type="text" id="contactPerson" name="contactPerson" class="form-control" placeholder="" required>
+        <small class="form-text text-muted mt-1">Please provide a contact from your company</small>
+      </div>
+
+      <div class="form-group text-left">
+        <label for="contactPhone" class="font-weight-bold">Contact Phone Number</label>
+        <input type="tel" id="contactPhone" name="contactPhone" class="form-control" placeholder="" pattern="[+]?[0-9\s\-()]{7,18}" required>
+        <small class="form-text text-muted mt-1">Phone Number of the Customer Contact</small>
+      </div>
+
+      <div class="form-group text-left">
+        <label for="contactEmail" class="font-weight-bold">Super User Email</label>
+        <input type="email" id="contactEmail" name="contactEmail" class="form-control" placeholder="" required>
+        <small class="form-text text-muted mt-1">Please provide an email for a superuser who will be responsible for managing access and configuration of your application. A temporary password will be sent to the superuser's email once the application is ready for use</small>
+      </div>
+
+      <div class="form-group text-left">
+        <label for="awsRegion" class="font-weight-bold">AWS Region</label>
+        <select id="awsRegion" name="awsRegion" class="form-control" required disabled>
+          <option value="eu-central-1" selected>eu-central-1 (Frankfurt)</option>
+          <option value="us-east-1">us-east-1 (N. Virginia)</option>
+          <option value="us-west-2">us-west-2 (Oregon)</option>
+          <option value="eu-west-1">eu-west-1 (Ireland)</option>
+          <option value="ap-southeast-1">ap-southeast-1 (Singapore)</option>
+          <option value="ap-south-1">ap-south-1 (Mumbai)</option>
+        </select>
+        <small class="form-text text-muted mt-1">Select AWS Region where you want your application to reside. Consider Data Residency Requirements</small>
+      </div>
+
+      <button class="btn btn-lg btn-primary btn-block mt-4" type="submit">Register</button>
+      <p class="mt-5 mb-3 text-muted">&copy; 2026</p>
     </form>
   </div>
   <!-- Optional JavaScript -->
@@ -41,6 +69,6 @@
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
     integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
     crossorigin="anonymous"></script>
-  <script src="script.js"></script>
+  <script src="/script.js"></script>
 </body>
 </html>

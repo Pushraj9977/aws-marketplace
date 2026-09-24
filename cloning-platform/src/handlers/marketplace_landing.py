@@ -64,15 +64,26 @@ def register_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "contact_person": payload.get("contact_person") or payload.get("contactPerson", ""),
             "contact_phone": payload.get("contact_phone") or payload.get("contactPhone", ""),
         }
-        result = marketplace_subscriber.handler(
-            {"body": json.dumps(subscriber_payload)},
-            context,
+        
+        from ..common.config import get_config
+        from ..common.models import SubscriberModel
+        from ..state.subscriber_state_manager import SubscriberStateManager
+
+        config = get_config()
+        subscriber = SubscriberModel(**subscriber_payload)
+        
+        state_mgr = SubscriberStateManager(
+            table_name=config.subscribers_table,
+            region=config.region,
         )
-        result["headers"] = _cors_headers()
-        body = json.loads(result.get("body", "{}"))
-        body["marketplace"] = resolved
-        result["body"] = json.dumps(body)
-        return result
+        state_mgr.put(subscriber)
+        logger.info("Marketplace subscriber written to DynamoDB for token %s", resolved["customer_identifier"])
+
+        return _response(200, {
+            "message": "Marketplace registration successful, provisioning queued.",
+            "reg_token": subscriber.reg_token,
+            "marketplace": resolved
+        })
     except Exception as exc:
         logger.error("Marketplace registration failed: %s", exc)
         return _response(500, {"error": str(exc)})
