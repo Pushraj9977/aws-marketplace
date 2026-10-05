@@ -21,7 +21,7 @@ class AmplifyProvisioner(BaseProvisioner):
     resource_type = ResourceType.AMPLIFY_BRANCH
 
     def _create(self, env: EnvironmentModel) -> ResourceRecord:
-        amp = self.get_client("amplify")
+        amp = self.get_target_client("amplify")
         app_id = env.amplify_app_id
         branch_name = env.target_env_name
 
@@ -81,7 +81,7 @@ class AmplifyProvisioner(BaseProvisioner):
             "USER_POOL_ID": env.user_pool_id,
             "APP_CLIENT_ID": env.app_client_id,
             "SECRET_NAME": env.secret_name,
-            "REGION": self.region,
+            "REGION": self.target_region,
         }
         # Inject all API URLs
         for fn_name, url in env.api_urls.items():
@@ -123,20 +123,20 @@ class AmplifyProvisioner(BaseProvisioner):
         webhook_url = get_api_url("webhook")
 
         aws_exports_content = f"""const awsmobile = {{
-    "aws_project_region": "{self.region}",
+    "aws_project_region": "{self.target_region}",
     "aws_cloud_logic_custom": [
-        {{ "name": "backendApi", "endpoint": "{backend_url}", "region": "{self.region}" }},
-        {{ "name": "staffApi", "endpoint": "{staff_url}", "region": "{self.region}" }},
-        {{ "name": "engageapi", "endpoint": "{engage_url}", "region": "{self.region}" }},
-        {{ "name": "bhaSession", "endpoint": "{bha_url}", "region": "{self.region}" }},
-        {{ "name": "webhook", "endpoint": "{webhook_url}", "region": "{self.region}" }}
+        {{ "name": "backendApi", "endpoint": "{backend_url}", "region": "{self.target_region}" }},
+        {{ "name": "staffApi", "endpoint": "{staff_url}", "region": "{self.target_region}" }},
+        {{ "name": "engageapi", "endpoint": "{engage_url}", "region": "{self.target_region}" }},
+        {{ "name": "bhaSession", "endpoint": "{bha_url}", "region": "{self.target_region}" }},
+        {{ "name": "webhook", "endpoint": "{webhook_url}", "region": "{self.target_region}" }}
     ],
     "aws_appsync_graphqlEndpoint": "{env.appsync_graphql_url or 'https://placeholder/graphql'}",
-    "aws_appsync_region": "{self.region}",
+    "aws_appsync_region": "{self.target_region}",
     "aws_appsync_authenticationType": "API_KEY",
     "aws_appsync_apiKey": "{env.appsync_api_key}",
     "aws_cognito_identity_pool_id": "{env.identity_pool_id}",
-    "aws_cognito_region": "{self.region}",
+    "aws_cognito_region": "{self.target_region}",
     "aws_user_pools_id": "{env.user_pool_id}",
     "aws_user_pools_web_client_id": "{env.app_client_id}",
     "oauth": {{}},
@@ -178,7 +178,7 @@ export default awsmobile;
         return resp.get("branch", {})
 
     def _get_github_token(self) -> str:
-        sm = boto3.client("secretsmanager", region_name=self.region)
+        sm = boto3.client("secretsmanager", region_name=self.source_region)
         try:
             resp = sm.get_secret_value(SecretId="cloning-platform/github-token")
             return resp.get("SecretString", "")
@@ -300,7 +300,7 @@ export default awsmobile;
     def validate(self, record: ResourceRecord) -> bool:
         if not record.target_id or record.metadata.get("skipped"):
             return True
-        amp = self.get_client("amplify")
+        amp = self.get_target_client("amplify")
         app_id = record.metadata.get("app_id", "")
         if not app_id:
             return True

@@ -2,10 +2,16 @@
 s3_frontend_provisioner.py — Deploys the Catalyst-Assess frontend to a
 per-tenant S3 bucket by copying from the pre-built base assets bucket and
 injecting a tenant-specific config.js at runtime.
+
+CloudFront is provisioned automatically in front of every tenant bucket so
+customers always receive an HTTPS URL (*.cloudfront.net cert is free and
+automatic — no ACM setup required).
 """
 from __future__ import annotations
 
 import json
+import time
+import uuid
 
 from ..common.constants import ResourceType
 from ..common.models import EnvironmentModel, ResourceRecord
@@ -28,13 +34,13 @@ class S3FrontendProvisioner(BaseProvisioner):
     resource_type = ResourceType.S3_FRONTEND
 
     def _create(self, env: EnvironmentModel) -> ResourceRecord:
-        s3 = self.get_client("s3")
+        s3 = self.get_target_client("s3")
         bucket_name = self._bucket_name(env.target_env_name)
 
         # 1. Create the per-tenant bucket
         self._create_bucket(s3, bucket_name)
 
-        # 2. Make it publicly readable
+        # 2. Make it publicly readable (CloudFront still needs this for website origin)
         self._configure_public_access(s3, bucket_name)
 
         # 3. Enable static website hosting
@@ -43,20 +49,23 @@ class S3FrontendProvisioner(BaseProvisioner):
         # 4. Copy all base assets from the pre-built source bucket
         self._copy_base_assets(s3, bucket_name)
 
-        # 5. Generate and upload the tenant-specific config.js
+        # 5. Create CloudFront distribution for HTTPS (uses free *.cloudfront.net cert)
+        s3_website_origin = (
+            f"{bucket_name}.s3-website.{self.target_region}.amazonaws.com"
+        )
+        cf_domain, cf_distribution_id = self._create_cloudfront_distribution(
+            env.target_env_name, s3_website_origin
+        )
+        https_url = f"https://{cf_domain}"
+
+        # 6. Generate and upload tenant-specific config.js (now includes HTTPS URL)
+        env.assess_url = https_url
         config_js = self._build_config_js(env)
         self._upload_config(s3, bucket_name, config_js)
 
-        website_url = (
-            f"http://{bucket_name}.s3-website.{self.region}.amazonaws.com"
-        )
-
-        # 6. Persist URL back onto the environment so later steps & report can use it
-        env.assess_url = website_url
-
         self.logger.info(
-            "S3 frontend deployed",
-            extra={"bucket": bucket_name, "url": website_url},
+            "S3 frontend deployed with HTTPS via CloudFront",
+            extra={"bucket": bucket_name, "url": https_url, "cf_id": cf_distribution_id},
         )
 
         return ResourceRecord(
@@ -64,7 +73,12 @@ class S3FrontendProvisioner(BaseProvisioner):
             source_id=env.source_env_name,
             target_id=bucket_name,
             target_arn=f"arn:aws:s3:::{bucket_name}",
-            metadata={"url": website_url, "bucket": bucket_name},
+            metadata={
+                "url": https_url,
+                "bucket": bucket_name,
+                "cloudfront_domain": cf_domain,
+                "cloudfront_distribution_id": cf_distribution_id,
+            },
         )
 
     # ------------------------------------------------------------------
@@ -79,16 +93,124 @@ class S3FrontendProvisioner(BaseProvisioner):
         # S3 bucket names must be <= 63 chars
         return f"catalyst-assess-{safe}"[:63]
 
+    @retry(max_attempts=3, delay_seconds=5.0)
+    def _create_cloudfront_distribution(
+        self, env_name: str, s3_website_origin: str
+    ) -> tuple[str, str]:
+        """
+        Create (or reuse) a CloudFront distribution in front of the tenant S3
+        website bucket.  Returns (domain_name, distribution_id).
+
+        CloudFront distributions come with a free *.cloudfront.net HTTPS cert —
+        no ACM setup needed. The distribution uses the S3 *website* endpoint
+        as origin so SPA routing (404 → index.html) works correctly.
+        """
+        # CloudFront is a global service — its API endpoint is always us-east-1
+        import boto3 as _boto3
+        cf = _boto3.client("cloudfront", region_name="us-east-1")
+
+        # Idempotency: check if a distribution for this origin already exists
+        existing = self._find_existing_cf_distribution(cf, s3_website_origin)
+        if existing:
+            self.logger.info(
+                "Reusing existing CloudFront distribution",
+                extra={"domain": existing[0], "id": existing[1]},
+            )
+            return existing
+
+        caller_ref = f"{env_name}-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+        origin_id = f"S3-assess-{env_name}"
+
+        resp = cf.create_distribution_with_tags(  # type: ignore[attr-defined]
+            DistributionConfigWithTags={
+                "DistributionConfig": {
+                    "CallerReference": caller_ref,
+                    "Comment": f"Catalyst Assess app — {env_name}",
+                    "Enabled": True,
+                    "Origins": {
+                        "Quantity": 1,
+                        "Items": [{
+                            "Id": origin_id,
+                            "DomainName": s3_website_origin,
+                            "CustomOriginConfig": {
+                                # S3 website endpoints speak plain HTTP on port 80
+                                "HTTPPort": 80,
+                                "HTTPSPort": 443,
+                                "OriginProtocolPolicy": "http-only",
+                            },
+                        }],
+                    },
+                    "DefaultCacheBehavior": {
+                        "TargetOriginId": origin_id,
+                        "ViewerProtocolPolicy": "redirect-to-https",
+                        "AllowedMethods": {
+                            "Quantity": 2,
+                            "Items": ["GET", "HEAD"],
+                            "CachedMethods": {"Quantity": 2, "Items": ["GET", "HEAD"]},
+                        },
+                        # CachingOptimized managed policy — do NOT mix with ForwardedValues/MinTTL
+                        "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+                        "Compress": True,
+                    },
+                    # SPA routing: send all errors back to index.html
+                    "CustomErrorResponses": {
+                        "Quantity": 1,
+                        "Items": [{
+                            "ErrorCode": 403,
+                            "ResponseCode": "200",
+                            "ResponsePagePath": "/index.html",
+                            "ErrorCachingMinTTL": 10,
+                        }],
+                    },
+                    "PriceClass": "PriceClass_100",  # US + Europe + Asia — cheapest tier
+                    "HttpVersion": "http2",
+                },
+                # Tags must be a top-level sibling of DistributionConfig, not nested inside it
+                "Tags": {
+                    "Items": [
+                        {"Key": "Environment", "Value": env_name},
+                        {"Key": "ManagedBy", "Value": "CloningPlatform"},
+                    ]
+                },
+            }
+        )
+
+        dist = resp["Distribution"]
+        domain = dist["DomainName"]
+        dist_id = dist["Id"]
+        self.logger.info(
+            "CloudFront distribution created (deploying globally — may take 5-15 min)",
+            extra={"domain": domain, "id": dist_id},
+        )
+        return domain, dist_id
+
+    def _find_existing_cf_distribution(
+        self, cf: object, origin_domain: str
+    ) -> tuple[str, str] | None:
+        """Return (domain, id) if a distribution already points at this S3 origin."""
+        try:
+            paginator = cf.get_paginator("list_distributions")  # type: ignore[attr-defined]
+            for page in paginator.paginate():
+                items = page.get("DistributionList", {}).get("Items", [])
+                for dist in items:
+                    origins = dist.get("Origins", {}).get("Items", [])
+                    for origin in origins:
+                        if origin.get("DomainName", "") == origin_domain:
+                            return dist["DomainName"], dist["Id"]
+        except Exception as e:
+            self.logger.warning(f"Could not check existing CF distributions: {e}")
+        return None
+
     @retry(max_attempts=3, delay_seconds=2.0)
     def _create_bucket(self, s3: object, bucket_name: str) -> None:
         """Create the S3 bucket (idempotent)."""
         try:
-            if self.region == "us-east-1":
+            if self.target_region == "us-east-1":
                 s3.create_bucket(Bucket=bucket_name)  # type: ignore[attr-defined]
             else:
                 s3.create_bucket(  # type: ignore[attr-defined]
                     Bucket=bucket_name,
-                    CreateBucketConfiguration={"LocationConstraint": self.region},
+                    CreateBucketConfiguration={"LocationConstraint": self.target_region},
                 )
             self.logger.info("S3 bucket created", extra={"bucket": bucket_name})
         except s3.exceptions.BucketAlreadyOwnedByYou:  # type: ignore[attr-defined]
@@ -195,9 +317,11 @@ class S3FrontendProvisioner(BaseProvisioner):
             "APPSYNC_API_KEY": env.appsync_api_key,
             "CLOUDFRONT_URI": env.cloudfront_url or "https://d1i0z2k8umbb0n.cloudfront.net",
             "ORG_ID": org_id,
-            "REGION": self.region,
+            "REGION": self.target_region,
             "ENCRYPT_KEY": "9f2d4a7c3b1e5f8a6c0d9e743f12b6a8e4c5d7f9a0b3c2d1e6f8a7c9b0d4e3f",
             "FALLBACK_ORG": org_id,
+            # ASSESS_URL: the public HTTPS URL of this tenant's Assess app
+            "ASSESS_URL": env.assess_url or "",
         }
 
         lines = [f'  "{k}": "{v}"' for k, v in config.items()]
@@ -206,7 +330,7 @@ class S3FrontendProvisioner(BaseProvisioner):
     def _get_api_key(self, env: EnvironmentModel) -> str:
         """Retrieve the API key from Secrets Manager (stored by APIGatewayProvisioner)."""
         try:
-            sm = self.get_client("secretsmanager")
+            sm = self.get_target_client("secretsmanager")
             resp = sm.get_secret_value(SecretId=env.secret_name)  # type: ignore[attr-defined]
             import json as _json
             payload = _json.loads(resp.get("SecretString", "{}"))

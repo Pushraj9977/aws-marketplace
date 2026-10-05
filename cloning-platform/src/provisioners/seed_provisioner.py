@@ -15,7 +15,7 @@ class SeedProvisioner(BaseProvisioner):
     resource_type = ResourceType.SEED_DATA
 
     def _create(self, env: EnvironmentModel) -> ResourceRecord:
-        ddb = self.get_client("dynamodb")
+        ddb = self.get_source_client("dynamodb")
 
         org_id = f"org-{env.target_env_name}"
         admin_email = env.contact_email or f"admin@{env.target_env_name}.com"

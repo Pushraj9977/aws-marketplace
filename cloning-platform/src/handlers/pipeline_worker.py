@@ -70,11 +70,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     provisioner_class = PROVISIONER_MAP[step]
     state_mgr = EnvironmentStateManager(
         table_name=os.environ.get("STATE_TABLE", "EnvironmentState"),
-        region=env.region
+        region=env.source_region
     )
     
     provisioner = provisioner_class(
-        region=env.region,
+        source_region=env.source_region,
+        target_region=env.target_region,
         account_id=env.account_id,
         state_manager=state_mgr
     )

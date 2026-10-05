@@ -20,7 +20,7 @@ class CognitoProvisioner(BaseProvisioner):
     resource_type = ResourceType.COGNITO_USER_POOL
 
     def _create(self, env: EnvironmentModel) -> ResourceRecord:
-        idp = self.get_client("cognito-idp")
+        idp = self.get_target_client("cognito-idp")
         pool_name = f"{env.target_env_name}-userpool"
         client_name = f"{env.target_env_name}-client"
 
@@ -41,7 +41,7 @@ class CognitoProvisioner(BaseProvisioner):
         env.app_client_id = app_client_id
 
         # Create Admin User
-        sm = self.get_client("secretsmanager")
+        sm = self.get_target_client("secretsmanager")
         admin_email, admin_password, credentials_secret_name = self._create_admin_user(
             idp,
             sm,
@@ -60,7 +60,7 @@ class CognitoProvisioner(BaseProvisioner):
             resource_type=self.resource_type,
             source_id=env.source_env_name,
             target_id=pool_id,
-            target_arn=f"arn:aws:cognito-idp:{self.region}:{self.account_id}:userpool/{pool_id}",
+            target_arn=f"arn:aws:cognito-idp:{self.target_region}:{self.account_id}:userpool/{pool_id}",
             metadata={
                 "app_client_id": app_client_id,
                 "pool_name": pool_name,
@@ -221,7 +221,7 @@ class CognitoProvisioner(BaseProvisioner):
         normalized = re.sub(r"[^A-Z0-9]", "", env.target_env_name.upper())
         staff_id = f"{normalized[:12] or 'TENANT'}-ADMIN"
         try:
-            ddb = self.get_client("dynamodb")
+            ddb = self.get_source_client("dynamodb") # Linking in control plane shared DB
             ddb.update_item(
                 TableName="catEncounter_StaffTable",
                 Key={"staffId": {"S": staff_id}},
@@ -234,7 +234,7 @@ class CognitoProvisioner(BaseProvisioner):
     @retry(max_attempts=3, delay_seconds=2.0)
     def _create_identity_pool(self, idp: object, user_pool_id: str, app_client_id: str, pool_name: str, env: EnvironmentModel) -> str:
         """Create a Cognito Identity Pool linked to the new User Pool."""
-        client = self.get_client("cognito-identity")
+        client = self.get_target_client("cognito-identity")
         identity_pool_name = pool_name.replace("-", "_")  # Identity pools use underscores often
 
         # Check if exists
@@ -249,7 +249,7 @@ class CognitoProvisioner(BaseProvisioner):
 
         # Create new
         self.logger.info("Creating new identity pool", extra={"identity_pool_name": identity_pool_name})
-        provider_name = f"cognito-idp.{self.region}.amazonaws.com/{user_pool_id}"
+        provider_name = f"cognito-idp.{self.target_region}.amazonaws.com/{user_pool_id}"
         
         response = client.create_identity_pool(  # type: ignore[attr-defined]
             IdentityPoolName=identity_pool_name,
@@ -271,8 +271,8 @@ class CognitoProvisioner(BaseProvisioner):
     @retry(max_attempts=3, delay_seconds=2.0)
     def _setup_identity_pool_roles(self, env: EnvironmentModel, pool_id: str) -> None:
         """Create IAM roles and attach them to the Identity Pool."""
-        iam = self.get_client("iam")
-        cognito_id = self.get_client("cognito-identity")
+        iam = self.get_target_client("iam")
+        cognito_id = self.get_target_client("cognito-identity")
         
         import json
         
@@ -390,7 +390,7 @@ class CognitoProvisioner(BaseProvisioner):
             sm.put_secret_value(SecretId=secret_name, SecretString=payload)  # type: ignore[attr-defined]
 
     def validate(self, record: ResourceRecord) -> bool:
-        idp = self.get_client("cognito-idp")
+        idp = self.get_target_client("cognito-idp")
         try:
             idp.describe_user_pool(UserPoolId=record.target_id)
             return True

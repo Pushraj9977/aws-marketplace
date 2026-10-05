@@ -59,7 +59,8 @@ class TestEnvironmentModel:
         env = EnvironmentModel(
             source_env_name="demo",
             target_env_name="acme",
-            region="eu-central-1",
+            source_region="eu-central-1",
+            target_region="us-east-1",
             account_id="123456789012",
         )
         assert env.secret_name == "acme/app-secret"
@@ -68,7 +69,8 @@ class TestEnvironmentModel:
         env = EnvironmentModel(
             source_env_name="demo",
             target_env_name="acme",
-            region="eu-central-1",
+            source_region="eu-central-1",
+            target_region="us-east-1",
             account_id="123",
         )
         record = ResourceRecord(
@@ -86,7 +88,8 @@ class TestEnvironmentModel:
         env = EnvironmentModel(
             source_env_name="demo",
             target_env_name="acme",
-            region="eu-central-1",
+            source_region="eu-central-1",
+            target_region="us-east-1",
             account_id="123",
         )
         env.add_resource(ResourceRecord(
@@ -100,7 +103,8 @@ class TestEnvironmentModel:
         env = EnvironmentModel(
             source_env_name="demo",
             target_env_name="acme",
-            region="eu-central-1",
+            source_region="eu-central-1",
+            target_region="us-east-1",
             account_id="123",
         )
         env.add_resource(ResourceRecord(

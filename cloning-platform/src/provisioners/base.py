@@ -37,11 +37,13 @@ class BaseProvisioner(ABC):
 
     def __init__(
         self,
-        region: str,
+        source_region: str,
+        target_region: str,
         account_id: str,
         state_manager: EnvironmentStateManager,
     ) -> None:
-        self.region = region
+        self.source_region = source_region
+        self.target_region = target_region
         self.account_id = account_id
         self.state_manager = state_manager
         self.logger = get_logger(
@@ -49,9 +51,17 @@ class BaseProvisioner(ABC):
             resource_type=self.resource_type,
         )
 
+    def get_source_client(self, service: str) -> Any:
+        """Return a boto3 client for the given AWS service in the source region."""
+        return boto3.client(service, region_name=self.source_region)
+
+    def get_target_client(self, service: str) -> Any:
+        """Return a boto3 client for the given AWS service in the target region."""
+        return boto3.client(service, region_name=self.target_region)
+
     def get_client(self, service: str) -> Any:
-        """Return a boto3 client for the given AWS service."""
-        return boto3.client(service, region_name=self.region)
+        """Deprecated: Return a boto3 client for the given AWS service in the target region."""
+        return self.get_target_client(service)
 
     def provision(self, env: EnvironmentModel) -> ResourceRecord:
         """

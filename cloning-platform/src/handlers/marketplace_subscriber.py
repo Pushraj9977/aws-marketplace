@@ -142,6 +142,7 @@ def _normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "contactEmail": "contact_email",
         "contactPerson": "contact_person",
         "contactPhone": "contact_phone",
+        "targetRegion": "target_region",
     }
     for legacy_key, canonical_key in field_map.items():
         if legacy_key in normalized and canonical_key not in normalized:
@@ -164,13 +165,15 @@ def _start_pipeline(subscriber: SubscriberModel) -> str:
 
     target_env = subscriber.sanitized_env_name()
 
+    target_region = getattr(subscriber, "target_region", "") or config.region
     input_payload = {
         "reg_token": subscriber.reg_token,
         "company_name": subscriber.company_name,
         "contact_email": subscriber.contact_email,
         "source_env_name": config.source_env_name,
         "target_env_name": target_env,
-        "region": config.region,
+        "source_region": config.region,
+        "target_region": target_region,
         "account_id": config.account_id,
         "amplify_app_id": config.amplify_app_id,
     }

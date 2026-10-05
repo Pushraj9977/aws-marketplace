@@ -16,8 +16,8 @@ class APIGatewayProvisioner(BaseProvisioner):
     resource_type = ResourceType.API_GATEWAY
 
     def _create(self, env: EnvironmentModel) -> ResourceRecord:
-        apigw = self.get_client("apigateway")
-        lam = self.get_client("lambda")
+        apigw = self.get_target_client("apigateway")
+        lam = self.get_target_client("lambda")
 
         # Discover cloned Lambda function names
         lam_functions = self._list_target_functions(lam, env.target_env_name)
@@ -35,7 +35,7 @@ class APIGatewayProvisioner(BaseProvisioner):
             api_name = f"{fn_name}-api"
             self.logger.info("Wiring API Gateway", extra={"api": api_name, "lambda": fn_name})
 
-            fn_arn = build_lambda_arn(self.region, self.account_id, fn_name)
+            fn_arn = build_lambda_arn(self.target_region, self.account_id, fn_name)
             api_id = self._create_rest_api(apigw, api_name, env)
             root_id = self._get_root_resource_id(apigw, api_id)
             proxy_id = self._add_proxy_resource(apigw, api_id, root_id)
@@ -43,7 +43,7 @@ class APIGatewayProvisioner(BaseProvisioner):
             self._deploy_stage(apigw, api_id, env.target_env_name)
             self._grant_invoke(lam, fn_name, api_id)
 
-            api_url = build_api_url(api_id, self.region, env.target_env_name)
+            api_url = build_api_url(api_id, self.target_region, env.target_env_name)
             api_urls[fn_name] = api_url
             self.logger.info("API wired", extra={"api_url": api_url})
 
@@ -114,7 +114,7 @@ class APIGatewayProvisioner(BaseProvisioner):
             httpMethod="ANY",
             authorizationType="NONE",
         )
-        uri = f"arn:aws:apigateway:{self.region}:lambda:path/2015-03-31/functions/{fn_arn}/invocations"
+        uri = f"arn:aws:apigateway:{self.target_region}:lambda:path/2015-03-31/functions/{fn_arn}/invocations"
         apigw.put_integration(  # type: ignore[attr-defined]
             restApiId=api_id,
             resourceId=resource_id,
@@ -129,7 +129,7 @@ class APIGatewayProvisioner(BaseProvisioner):
         apigw.create_deployment(restApiId=api_id, stageName=stage_name)  # type: ignore[attr-defined]
 
     def _grant_invoke(self, lam: object, fn_name: str, api_id: str) -> None:
-        source_arn = build_apigw_source_arn(self.region, self.account_id, api_id)
+        source_arn = build_apigw_source_arn(self.target_region, self.account_id, api_id)
         try:
             lam.add_permission(  # type: ignore[attr-defined]
                 FunctionName=fn_name,
@@ -144,7 +144,7 @@ class APIGatewayProvisioner(BaseProvisioner):
     def validate(self, record: ResourceRecord) -> bool:
         if not record.target_id:
             return True
-        apigw = self.get_client("apigateway")
+        apigw = self.get_target_client("apigateway")
         try:
             apigw.get_rest_apis()
             return True

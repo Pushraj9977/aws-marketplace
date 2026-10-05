@@ -78,7 +78,8 @@ def sample_environment(sample_subscriber):
     env = EnvironmentModel(
         source_env_name="demo",
         target_env_name="act-international",
-        region="eu-central-1",
+        source_region="eu-central-1",
+        target_region="eu-central-1",
         account_id="215116348101",
         amplify_app_id="d246slprgvqfid",
         reg_token=sample_subscriber.reg_token,

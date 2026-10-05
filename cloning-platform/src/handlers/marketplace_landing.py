@@ -63,6 +63,7 @@ def register_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "contact_email": contact_email,
             "contact_person": payload.get("contact_person") or payload.get("contactPerson", ""),
             "contact_phone": payload.get("contact_phone") or payload.get("contactPhone", ""),
+            "target_region": payload.get("target_region") or payload.get("targetRegion") or "",
         }
         
         from ..common.config import get_config

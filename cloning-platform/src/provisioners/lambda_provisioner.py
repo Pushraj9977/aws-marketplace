@@ -21,10 +21,11 @@ class LambdaProvisioner(BaseProvisioner):
     resource_type = ResourceType.LAMBDA_FUNCTION
 
     def _create(self, env: EnvironmentModel) -> ResourceRecord:
-        lam = self.get_client("lambda")
+        lam = self.get_target_client("lambda")
+        source_lam = self.get_source_client("lambda")
 
         # Discover source functions
-        source_functions = self._list_source_functions(lam, env.source_env_name)
+        source_functions = self._list_source_functions(source_lam, env.source_env_name)
         if not source_functions:
             raise SourceResourceNotFoundError(
                 f"No Lambda functions found matching source env: {env.source_env_name}",
@@ -48,7 +49,7 @@ class LambdaProvisioner(BaseProvisioner):
 
                 # Download source package
                 zip_path = Path(tmpdir) / f"{target_name}.zip"
-                source_cfg = self._download_package(lam, source_name, zip_path)
+                source_cfg = self._download_package(source_lam, source_name, zip_path)
 
                 # Create new function
                 self._create_function(lam, source_cfg, target_name, zip_path, env)
@@ -63,7 +64,7 @@ class LambdaProvisioner(BaseProvisioner):
             resource_type=self.resource_type,
             source_id=env.source_env_name,
             target_id=",".join(all_targets),
-            target_arn=build_lambda_arn(self.region, self.account_id, all_targets[0]) if all_targets else "",
+            target_arn=build_lambda_arn(self.target_region, self.account_id, all_targets[0]) if all_targets else "",
             metadata={"created": created, "skipped": skipped},
         )
 
@@ -140,13 +141,14 @@ class LambdaProvisioner(BaseProvisioner):
         overrides = {
             "ENV": env.target_env_name,
             "ENV_NAME": env.target_env_name,
-            "REGION": self.region,
+            "REGION": self.target_region,
             "USER_POOL_ID": env.user_pool_id,
             "APP_CLIENT_ID": env.app_client_id,
             # Secret name — runtime secret lookup
             "SECRET_NAME": env.secret_name,
             "SECRET_MANAGER_KEY": "HealthyLivingProd/catalyst/KeyJune2025",
-            "SECRET_ACCESS_KEY_REGION": self.region,
+            "SECRET_ACCESS_KEY_REGION": env.source_region,
+            "DYNAMODB_REGION": env.source_region,
             # Cognito / Frontend identifiers
             "NEXT_PUBLIC_USER_POOL_ID": env.user_pool_id,
             "NEXT_PUBLIC_CDN_URL": "https://d3kpamwwj9ilmr.cloudfront.net",
@@ -187,7 +189,7 @@ class LambdaProvisioner(BaseProvisioner):
         waiter.wait(FunctionName=target_name)
 
     def validate(self, record: ResourceRecord) -> bool:
-        lam = self.get_client("lambda")
+        lam = self.get_target_client("lambda")
         first_fn = (record.target_id or "").split(",")[0]
         if not first_fn:
             return True
