@@ -22,44 +22,37 @@ const getUrlParameter = (name) => {
 };
 const handleFormSubmit = (event) => {
   event.preventDefault();
-  const postUrl = `/subscriber`;
   const regToken = getUrlParameter('x-amzn-marketplace-token');
   if (!regToken) {
     showAlert('danger',
       'Registration Token Missing. Please go to AWS Marketplace and follow the instructions to set up your account!');
   } else {
     const data = formToJSON(form.elements);
-    data.regToken = regToken;
-    
-    // Original API Call to /subscriber
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', postUrl, true);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.send(JSON.stringify(data));
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState == XMLHttpRequest.DONE) {
-        showAlert('primary', xhr.responseText);
-        console.log(JSON.stringify(xhr.responseText));
-      }
-    };
+    // API Gateway expects "marketplace_token" instead of "regToken"
+    data.marketplace_token = regToken;
 
-    // Parallel Async API Call to Lambda / API Gateway REST Endpoint
-    const lambdaUrl = 'https://m7gj3gbagk.execute-api.eu-central-1.amazonaws.com/prod/subscriber';
-    const apiKey = 'MarketplaceApiKey123!';
+    // API Call to the new Serverless API Gateway endpoint
+    const lambdaUrl = 'https://penuu7szkh.execute-api.eu-central-1.amazonaws.com/Prod/marketplace/register/';
     
     fetch(lambdaUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(data)
     })
-    .then(response => {
-      console.log('Secure APIGW async registration status:', response.status);
+    .then(async response => {
+      if (response.ok) {
+         showAlert('primary', "Registration successful! Environment provisioning has started.");
+      } else {
+         const errData = await response.json().catch(()=>({}));
+         showAlert('danger', "Error during registration: " + (errData.error || response.status));
+      }
+      console.log('API Gateway registration status:', response.status);
     })
     .catch(error => {
-      console.error('Secure APIGW async registration error:', error);
+      showAlert('danger', "Network error occurred.");
+      console.error('API Gateway registration error:', error);
     });
   }
 };

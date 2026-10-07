@@ -169,12 +169,20 @@ Resources:
     Properties:
       CodeUri: .
       Handler: src.handlers.marketplace_landing.resolve_handler
+      Environment:
+        Variables:
+          SELLER_ROLE_ARN: "arn:aws:iam::613205425102:role/215116348101_access"
       Policies:
         - Statement:
             Effect: Allow
             Action:
               - aws-marketplace:ResolveCustomer
             Resource: "*"
+        - Statement:
+            Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Resource: "arn:aws:iam::*:role/215116348101_access"
         - DynamoDBCrudPolicy:
             TableName: MarketplaceSubscribers
         - DynamoDBCrudPolicy:
@@ -196,12 +204,18 @@ Resources:
       Environment:
         Variables:
           STATE_MACHINE_ARN: !Ref CloningStateMachine
+          SELLER_ROLE_ARN: "arn:aws:iam::613205425102:role/215116348101_access"
       Policies:
         - Statement:
             Effect: Allow
             Action:
               - aws-marketplace:ResolveCustomer
             Resource: "*"
+        - Statement:
+            Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Resource: "arn:aws:iam::*:role/215116348101_access"
         - DynamoDBCrudPolicy:
             TableName: MarketplaceSubscribers
         - DynamoDBCrudPolicy:

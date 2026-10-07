@@ -110,6 +110,7 @@ def _extract_marketplace_token(event: dict[str, Any], payload: dict[str, Any] | 
 
 
 def _resolve_customer(token: str) -> dict[str, str]:
+    import os
     # Bypass real AWS Marketplace resolution for simulation testing
     if token.startswith("test-"):
         return {
@@ -118,7 +119,23 @@ def _resolve_customer(token: str) -> dict[str, str]:
             "customer_aws_account_id": "000000000000",
         }
         
-    client = boto3.client("meteringmarketplace")
+    seller_role_arn = os.environ.get("SELLER_ROLE_ARN")
+    if seller_role_arn:
+        sts = boto3.client("sts")
+        assumed = sts.assume_role(
+            RoleArn=seller_role_arn,
+            RoleSessionName="MarketplaceResolution"
+        )
+        creds = assumed["Credentials"]
+        client = boto3.client(
+            "meteringmarketplace",
+            aws_access_key_id=creds["AccessKeyId"],
+            aws_secret_access_key=creds["SecretAccessKey"],
+            aws_session_token=creds["SessionToken"],
+        )
+    else:
+        client = boto3.client("meteringmarketplace")
+
     response = client.resolve_customer(RegistrationToken=token)
     return {
         "customer_identifier": response.get("CustomerIdentifier", ""),
