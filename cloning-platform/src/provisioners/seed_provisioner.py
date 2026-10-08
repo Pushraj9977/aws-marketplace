@@ -71,7 +71,7 @@ class SeedProvisioner(BaseProvisioner):
                     'isPurchaseScreen': {'BOOL': True},
                     'lang': {'S': 'en'},
                     'messageAppBackgroundColor': {'S': '#00a9ce8C'},
-                    'organizationName': {'S': f"catalyst-assess-{env.target_env_name}"},
+                    'organizationName': {'S': org_id},
                     'partnerName': {'S': ''},
                     'phone': {'S': 'phone number'},
                     'policeNum': {'S': '999'},
