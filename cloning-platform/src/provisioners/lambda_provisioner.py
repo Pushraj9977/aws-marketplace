@@ -138,6 +138,12 @@ class LambdaProvisioner(BaseProvisioner):
         # For the initial release, tables are shared (same name) but injected via env var
         # so future per-tenant tables can be created by the DynamoDB provisioner and
         # inserted into env.dynamodb_table_names without changing this code.
+        # Resolve the VALID_API_KEY from Secrets Manager (created by SecretsProvisioner)
+        valid_api_key = self._get_secret_api_key(env)
+
+        # S3 bucket name is account-scoped — build it from the current account ID
+        s3_bucket = f"healthy-aging-buckets-test-{self.account_id}-{self.target_region}-an"
+
         overrides = {
             "ENV": env.target_env_name,
             "ENV_NAME": env.target_env_name,
@@ -149,10 +155,13 @@ class LambdaProvisioner(BaseProvisioner):
             "SECRET_MANAGER_KEY": "HealthyLivingProd/catalyst/KeyJune2025",
             "SECRET_ACCESS_KEY_REGION": env.source_region,
             "DYNAMODB_REGION": env.source_region,
+            # API key — must match what Assess frontend sends in x-api-key header
+            "VALID_API_KEY": valid_api_key,
             # Cognito / Frontend identifiers
             "NEXT_PUBLIC_USER_POOL_ID": env.user_pool_id,
             "NEXT_PUBLIC_CDN_URL": "https://d3kpamwwj9ilmr.cloudfront.net",
-            "NEXT_PUBLIC_S3Bucket": "healthy-aging-buckets-frankfurt-538594436951-eu-central-1-an",
+            # Build S3 bucket name dynamically so it always points to THIS account
+            "NEXT_PUBLIC_S3Bucket": s3_bucket,
             # DynamoDB table names — shared across all environments (per audio update)
             "CatEncounter_Users_Table": "CatEncounter_Users_Table",
             "CatEncounter_Membership_Table": "catEncounter_Membership_Table",
@@ -169,6 +178,8 @@ class LambdaProvisioner(BaseProvisioner):
             "CatEncounter_RecommendedEvent": "CatEncounter_RecommendedEvent",
             "catEncourageStaffAssignments": "catEncourageStaffAssignments",
             "Catalyst_CompConfig": "Catalyst_CompConfig",
+            # backendApi reads Engage_CompConfig for org config lookups — map it to the shared table
+            "Engage_CompConfig": "Catalyst_CompConfig",
             "memberAssessments": "memberAssessments",
             "memberPlans": "memberPlans",
             "FeelingMeter": "FeelingMeter",
@@ -187,6 +198,23 @@ class LambdaProvisioner(BaseProvisioner):
         )
         waiter = lam.get_waiter("function_updated_v2")  # type: ignore[attr-defined]
         waiter.wait(FunctionName=target_name)
+
+    def _get_secret_api_key(self, env: EnvironmentModel) -> str:
+        """Read the VALID_API_KEY from the tenant's Secrets Manager secret."""
+        try:
+            sm = self.get_target_client("secretsmanager")
+            resp = sm.get_secret_value(SecretId=env.secret_name)  # type: ignore[attr-defined]
+            import json as _json
+            payload = _json.loads(resp.get("SecretString", "{}"))
+            # The key may be stored as 'api_key' or 'VALID_API_KEY'
+            key = payload.get("VALID_API_KEY") or payload.get("api_key", "")
+            if key:
+                return key
+        except Exception as exc:
+            self.logger.warning(f"Could not retrieve VALID_API_KEY from secret: {exc}")
+        # Fallback: generate a stable key from the secret name so it is consistent
+        import hashlib
+        return hashlib.sha256(env.secret_name.encode()).hexdigest()[:64]
 
     def validate(self, record: ResourceRecord) -> bool:
         lam = self.get_target_client("lambda")

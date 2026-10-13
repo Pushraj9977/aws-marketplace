@@ -301,6 +301,8 @@ class S3FrontendProvisioner(BaseProvisioner):
 
         staff_url = get_api_url("staffApi")
         backend_url = get_api_url("backendApi")
+        # bhaSession has its own dedicated API Gateway — must NOT be routed through backendApi
+        bha_url = get_api_url("bhaSession")
         org_id = f"org-{env.target_env_name}"
 
         # Retrieve the API key from Secrets Manager if available
@@ -309,6 +311,8 @@ class S3FrontendProvisioner(BaseProvisioner):
         config = {
             "REST_API_URL": backend_url or staff_url,
             "STAFF_API_URL": staff_url,
+            # bhaSession has a dedicated gateway — route BHA calls there, not to backendApi
+            "BHA_API_URL": bha_url,
             "API_KEY": api_key,
             "USER_POOL_ID": env.user_pool_id,
             "APP_CLIENT_ID": env.app_client_id,
