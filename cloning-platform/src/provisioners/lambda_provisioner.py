@@ -153,7 +153,8 @@ class LambdaProvisioner(BaseProvisioner):
             # Secret name — runtime secret lookup
             "SECRET_NAME": env.secret_name,
             "SECRET_MANAGER_KEY": "HealthyLivingProd/catalyst/KeyJune2025",
-            "SECRET_ACCESS_KEY_REGION": env.source_region,
+            "SECRET_ACCESS_KEY_REGION": "me-central-1",
+            "SECRET_KEY": "9f2d4a7c3b1e5f8a6c0d9e743f12b6a8e4c5d7f9a0b3c2d1e6f8a7c9b0d4e3f",
             "DYNAMODB_REGION": env.source_region,
             # API key — must match what Assess frontend sends in x-api-key header
             "VALID_API_KEY": valid_api_key,
@@ -204,12 +205,16 @@ class LambdaProvisioner(BaseProvisioner):
         try:
             sm = self.get_target_client("secretsmanager")
             resp = sm.get_secret_value(SecretId=env.secret_name)  # type: ignore[attr-defined]
-            import json as _json
-            payload = _json.loads(resp.get("SecretString", "{}"))
-            # The key may be stored as 'api_key' or 'VALID_API_KEY'
-            key = payload.get("VALID_API_KEY") or payload.get("api_key", "")
-            if key:
-                return key
+            raw = resp.get("SecretString", "").strip()
+            if raw:
+                try:
+                    import json as _json
+                    payload = _json.loads(raw)
+                    if isinstance(payload, dict):
+                        return payload.get("VALID_API_KEY") or payload.get("api_key") or raw
+                except Exception:
+                    pass
+                return raw
         except Exception as exc:
             self.logger.warning(f"Could not retrieve VALID_API_KEY from secret: {exc}")
         # Fallback: generate a stable key from the secret name so it is consistent

@@ -63,6 +63,7 @@ def seed_dynamodb(env_name, admin_email=None, company_name=None):
                 'assessHeader': company_name,
                 'staffHeader': company_name,
                 'lang': 'en',
+                'theme': 'solidGreen',
                 'solution': 'Full-Solution',
             }
         )

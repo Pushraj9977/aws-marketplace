@@ -87,6 +87,26 @@ class AmplifyProvisioner(BaseProvisioner):
         for fn_name, url in env.api_urls.items():
             key = f"NEXT_PUBLIC_{fn_name.upper().replace('-', '_')}_URL"
             vars_[key] = url
+
+        # Inject NEXT_PUBLIC_API_KEY from Secrets Manager so frontend can authenticate to Lambdas
+        try:
+            sm = self.get_target_client("secretsmanager")
+            resp = sm.get_secret_value(SecretId=env.secret_name)  # type: ignore[attr-defined]
+            raw = resp.get("SecretString", "").strip()
+            if raw:
+                try:
+                    import json as _json
+                    payload = _json.loads(raw)
+                    if isinstance(payload, dict):
+                        api_key = payload.get("VALID_API_KEY") or payload.get("api_key") or raw
+                    else:
+                        api_key = raw
+                except Exception:
+                    api_key = raw
+                vars_["NEXT_PUBLIC_API_KEY"] = api_key
+        except Exception as exc:
+            self.logger.warning(f"Could not retrieve NEXT_PUBLIC_API_KEY: {exc}")
+
         return vars_
 
     @retry(max_attempts=3, delay_seconds=3.0)

@@ -91,6 +91,7 @@ class SeedProvisioner(BaseProvisioner):
                     'staffLogo': {'S': DEFAULT_LOGO},
                     'staffName': {'S': ''},
                     'termsOfUse': {'S': 'Sample'},
+                    'theme': {'S': 'solidGreen'},
                     'environment': {'S': env.target_env_name},
                     'organizationId': {'S': org_id}
                 }
