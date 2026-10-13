@@ -332,13 +332,21 @@ class S3FrontendProvisioner(BaseProvisioner):
         return "window.APP_CONFIG = {\n" + ",\n".join(lines) + "\n};\n"
 
     def _get_api_key(self, env: EnvironmentModel) -> str:
-        """Retrieve the API key from Secrets Manager (stored by APIGatewayProvisioner)."""
+        """Retrieve the API key from Secrets Manager (stored by APIGatewayProvisioner or SecretsProvisioner)."""
         try:
             sm = self.get_target_client("secretsmanager")
             resp = sm.get_secret_value(SecretId=env.secret_name)  # type: ignore[attr-defined]
-            import json as _json
-            payload = _json.loads(resp.get("SecretString", "{}"))
-            return payload.get("api_key", "")
+            raw = resp.get("SecretString", "").strip()
+            if not raw:
+                return ""
+            try:
+                import json as _json
+                payload = _json.loads(raw)
+                if isinstance(payload, dict):
+                    return payload.get("VALID_API_KEY") or payload.get("api_key") or raw
+                return raw
+            except Exception:
+                return raw
         except Exception:
             return ""
 
