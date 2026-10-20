@@ -180,7 +180,12 @@ class CognitoProvisioner(BaseProvisioner):
         pool_id: str,
         env: EnvironmentModel,
     ) -> tuple[str, str, str]:
-        """Create a default admin user with a permanent password."""
+        """Create a default admin user with a temporary password that must be changed on first login.
+
+        Using Permanent=False keeps the user in FORCE_CHANGE_PASSWORD status so the
+        Amplify frontend prompts the Super User to set a new password on first sign-in,
+        satisfying the QA requirement: "Super User is prompted to change password on first login".
+        """
         email = env.contact_email or f"admin@{env.target_env_name}.com"
         credentials_secret_name = f"{env.target_env_name}/admin-bootstrap"
         password = self._get_admin_password(sm, credentials_secret_name)
@@ -207,11 +212,14 @@ class CognitoProvisioner(BaseProvisioner):
         if sub_uuid:
             self._link_dynamodb_user(env, sub_uuid)
 
+        # Permanent=False → Cognito status stays FORCE_CHANGE_PASSWORD.
+        # The frontend will intercept signInStep == "CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED"
+        # and show the change-password form on the very first login.
         idp.admin_set_user_password(  # type: ignore[attr-defined]
             UserPoolId=pool_id,
             Username=email,
             Password=password,
-            Permanent=True,
+            Permanent=False,
         )
         self._store_admin_credentials(sm, credentials_secret_name, email, password, env)
         return email, password, credentials_secret_name
