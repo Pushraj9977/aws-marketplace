@@ -263,8 +263,8 @@ else
       --user-pool-id "$USER_POOL_ID" \
       --username "$ADMIN_EMAIL" \
       --password "$ADMIN_BOOTSTRAP_PASSWORD" \
-      --permanent >/dev/null 2>&1 || true
-    ok "Cognito admin user created and password set."
+      --no-permanent >/dev/null 2>&1 || true
+    ok "Cognito admin user created with temporary password (forced reset on first login)."
   fi
 fi
 
