@@ -165,6 +165,8 @@ class LambdaProvisioner(BaseProvisioner):
             "NEXT_PUBLIC_S3Bucket": s3_bucket,
             # DynamoDB table names — shared across all environments (per audio update)
             "CatEncounter_Users_Table": "CatEncounter_Users_Table",
+            "TableName": "CatEncounter_Users_Table",
+            "NEXT_PUBLIC_Users_Table": "CatEncounter_Users_Table",
             "CatEncounter_Membership_Table": "catEncounter_Membership_Table",
             "CatEncounter_StaffTable": "catEncounter_StaffTable",
             "Thought_Table": "Thought_Table",
