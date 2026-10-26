@@ -91,23 +91,38 @@ class AppSyncProvisioner(BaseProvisioner):
             metadata={"graphql_url": env.appsync_graphql_url}
         )
 
+    def _list_all_apis(self, client: Any) -> list[dict[str, Any]]:
+        """List all AppSync GraphQL APIs with pagination support."""
+        apis: list[dict[str, Any]] = []
+        next_token: str | None = None
+        while True:
+            params: dict[str, Any] = {"maxResults": 25}
+            if next_token:
+                params["nextToken"] = next_token
+            res = client.list_graphql_apis(**params)
+            apis.extend(res.get("graphqlApis", []))
+            next_token = res.get("nextToken")
+            if not next_token:
+                break
+        return apis
+
     def _find_source_api(self, client: Any, source_env_name: str) -> str | None:
         """Find the AppSync API associated with the source environment."""
-        apis = client.list_graphql_apis(maxResults=25).get("graphqlApis", [])
+        apis = self._list_all_apis(client)
         for api in apis:
             # Check tags first
             tags = api.get("tags", {})
             if tags.get("amplify:environment-name") == source_env_name:
                 return api["apiId"]
             # Fallback to name check
-            if source_env_name in api["name"]:
+            if source_env_name in api.get("name", ""):
                 return api["apiId"]
         return None
 
     def _find_api_by_name(self, client: Any, name: str) -> str | None:
-        apis = client.list_graphql_apis(maxResults=25).get("graphqlApis", [])
+        apis = self._list_all_apis(client)
         for api in apis:
-            if api["name"] == name:
+            if api.get("name") == name:
                 return api["apiId"]
         return None
 
