@@ -160,9 +160,12 @@ class LambdaProvisioner(BaseProvisioner):
             "VALID_API_KEY": valid_api_key,
             # Cognito / Frontend identifiers
             "NEXT_PUBLIC_USER_POOL_ID": env.user_pool_id,
-            "NEXT_PUBLIC_CDN_URL": "https://d3kpamwwj9ilmr.cloudfront.net",
+            "NEXT_PUBLIC_CDN_URL": "https://d34lhh9be61lrg.cloudfront.net",
             # Build S3 bucket name dynamically so it always points to THIS account
             "NEXT_PUBLIC_S3Bucket": s3_bucket,
+            "S3_BUCKET": s3_bucket,
+            "BUCKET_NAME": s3_bucket,
+            "STORAGE_BUCKET": s3_bucket,
             # DynamoDB table names — shared across all environments (per audio update)
             "CatEncounter_Users_Table": "CatEncounter_Users_Table",
             "TableName": "CatEncounter_Users_Table",

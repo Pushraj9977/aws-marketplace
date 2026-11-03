@@ -76,12 +76,17 @@ class AmplifyProvisioner(BaseProvisioner):
             return False
 
     def _build_env_vars(self, env: EnvironmentModel) -> dict[str, str]:
+        s3_bucket = f"healthy-aging-buckets-test-{self.account_id}-{self.target_region}-an"
         vars_: dict[str, str] = {
             "ENV_NAME": env.target_env_name,
             "USER_POOL_ID": env.user_pool_id,
             "APP_CLIENT_ID": env.app_client_id,
             "SECRET_NAME": env.secret_name,
             "REGION": self.target_region,
+            "NEXT_PUBLIC_CDN_URL": "https://d34lhh9be61lrg.cloudfront.net",
+            "NEXT_PUBLIC_S3Bucket": s3_bucket,
+            "S3_BUCKET": s3_bucket,
+            "STORAGE_BUCKET": s3_bucket,
         }
         # Inject all API URLs
         for fn_name, url in env.api_urls.items():
@@ -141,9 +146,12 @@ class AmplifyProvisioner(BaseProvisioner):
         engage_url = get_api_url("engageapi")
         bha_url = get_api_url("bhaSession")
         webhook_url = get_api_url("webhook")
+        s3_bucket = f"healthy-aging-buckets-test-{self.account_id}-{self.target_region}-an"
 
         aws_exports_content = f"""const awsmobile = {{
     "aws_project_region": "{self.target_region}",
+    "aws_user_files_s3_bucket": "{s3_bucket}",
+    "aws_user_files_s3_bucket_region": "{self.target_region}",
     "aws_cloud_logic_custom": [
         {{ "name": "backendApi", "endpoint": "{backend_url}", "region": "{self.target_region}" }},
         {{ "name": "staffApi", "endpoint": "{staff_url}", "region": "{self.target_region}" }},
