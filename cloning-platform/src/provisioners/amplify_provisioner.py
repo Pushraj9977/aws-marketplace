@@ -21,7 +21,7 @@ class AmplifyProvisioner(BaseProvisioner):
     resource_type = ResourceType.AMPLIFY_BRANCH
 
     def _create(self, env: EnvironmentModel) -> ResourceRecord:
-        amp = self.get_client("amplify")
+        amp = self.get_target_client("amplify")
         app_id = env.amplify_app_id
         branch_name = env.target_env_name
 
@@ -76,17 +76,42 @@ class AmplifyProvisioner(BaseProvisioner):
             return False
 
     def _build_env_vars(self, env: EnvironmentModel) -> dict[str, str]:
+        s3_bucket = f"healthy-aging-buckets-test-{self.account_id}-{self.target_region}-an"
         vars_: dict[str, str] = {
             "ENV_NAME": env.target_env_name,
             "USER_POOL_ID": env.user_pool_id,
             "APP_CLIENT_ID": env.app_client_id,
             "SECRET_NAME": env.secret_name,
-            "REGION": self.region,
+            "REGION": self.target_region,
+            "NEXT_PUBLIC_CDN_URL": "https://d34lhh9be61lrg.cloudfront.net",
+            "NEXT_PUBLIC_S3Bucket": s3_bucket,
+            "S3_BUCKET": s3_bucket,
+            "STORAGE_BUCKET": s3_bucket,
         }
         # Inject all API URLs
         for fn_name, url in env.api_urls.items():
             key = f"NEXT_PUBLIC_{fn_name.upper().replace('-', '_')}_URL"
             vars_[key] = url
+
+        # Inject NEXT_PUBLIC_API_KEY from Secrets Manager so frontend can authenticate to Lambdas
+        try:
+            sm = self.get_target_client("secretsmanager")
+            resp = sm.get_secret_value(SecretId=env.secret_name)  # type: ignore[attr-defined]
+            raw = resp.get("SecretString", "").strip()
+            if raw:
+                try:
+                    import json as _json
+                    payload = _json.loads(raw)
+                    if isinstance(payload, dict):
+                        api_key = payload.get("VALID_API_KEY") or payload.get("api_key") or raw
+                    else:
+                        api_key = raw
+                except Exception:
+                    api_key = raw
+                vars_["NEXT_PUBLIC_API_KEY"] = api_key
+        except Exception as exc:
+            self.logger.warning(f"Could not retrieve NEXT_PUBLIC_API_KEY: {exc}")
+
         return vars_
 
     @retry(max_attempts=3, delay_seconds=3.0)
@@ -121,22 +146,25 @@ class AmplifyProvisioner(BaseProvisioner):
         engage_url = get_api_url("engageapi")
         bha_url = get_api_url("bhaSession")
         webhook_url = get_api_url("webhook")
+        s3_bucket = f"healthy-aging-buckets-test-{self.account_id}-{self.target_region}-an"
 
         aws_exports_content = f"""const awsmobile = {{
-    "aws_project_region": "{self.region}",
+    "aws_project_region": "{self.target_region}",
+    "aws_user_files_s3_bucket": "{s3_bucket}",
+    "aws_user_files_s3_bucket_region": "{self.target_region}",
     "aws_cloud_logic_custom": [
-        {{ "name": "backendApi", "endpoint": "{backend_url}", "region": "{self.region}" }},
-        {{ "name": "staffApi", "endpoint": "{staff_url}", "region": "{self.region}" }},
-        {{ "name": "engageapi", "endpoint": "{engage_url}", "region": "{self.region}" }},
-        {{ "name": "bhaSession", "endpoint": "{bha_url}", "region": "{self.region}" }},
-        {{ "name": "webhook", "endpoint": "{webhook_url}", "region": "{self.region}" }}
+        {{ "name": "backendApi", "endpoint": "{backend_url}", "region": "{self.target_region}" }},
+        {{ "name": "staffApi", "endpoint": "{staff_url}", "region": "{self.target_region}" }},
+        {{ "name": "engageapi", "endpoint": "{engage_url}", "region": "{self.target_region}" }},
+        {{ "name": "bhaSession", "endpoint": "{bha_url}", "region": "{self.target_region}" }},
+        {{ "name": "webhook", "endpoint": "{webhook_url}", "region": "{self.target_region}" }}
     ],
     "aws_appsync_graphqlEndpoint": "{env.appsync_graphql_url or 'https://placeholder/graphql'}",
-    "aws_appsync_region": "{self.region}",
+    "aws_appsync_region": "{self.target_region}",
     "aws_appsync_authenticationType": "API_KEY",
     "aws_appsync_apiKey": "{env.appsync_api_key}",
     "aws_cognito_identity_pool_id": "{env.identity_pool_id}",
-    "aws_cognito_region": "{self.region}",
+    "aws_cognito_region": "{self.target_region}",
     "aws_user_pools_id": "{env.user_pool_id}",
     "aws_user_pools_web_client_id": "{env.app_client_id}",
     "oauth": {{}},
@@ -178,7 +206,7 @@ export default awsmobile;
         return resp.get("branch", {})
 
     def _get_github_token(self) -> str:
-        sm = boto3.client("secretsmanager", region_name=self.region)
+        sm = boto3.client("secretsmanager", region_name=self.source_region)
         try:
             resp = sm.get_secret_value(SecretId="cloning-platform/github-token")
             return resp.get("SecretString", "")
@@ -300,7 +328,7 @@ export default awsmobile;
     def validate(self, record: ResourceRecord) -> bool:
         if not record.target_id or record.metadata.get("skipped"):
             return True
-        amp = self.get_client("amplify")
+        amp = self.get_target_client("amplify")
         app_id = record.metadata.get("app_id", "")
         if not app_id:
             return True

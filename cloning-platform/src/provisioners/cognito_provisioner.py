@@ -20,7 +20,7 @@ class CognitoProvisioner(BaseProvisioner):
     resource_type = ResourceType.COGNITO_USER_POOL
 
     def _create(self, env: EnvironmentModel) -> ResourceRecord:
-        idp = self.get_client("cognito-idp")
+        idp = self.get_target_client("cognito-idp")
         pool_name = f"{env.target_env_name}-userpool"
         client_name = f"{env.target_env_name}-client"
 
@@ -41,7 +41,7 @@ class CognitoProvisioner(BaseProvisioner):
         env.app_client_id = app_client_id
 
         # Create Admin User
-        sm = self.get_client("secretsmanager")
+        sm = self.get_target_client("secretsmanager")
         admin_email, admin_password, credentials_secret_name = self._create_admin_user(
             idp,
             sm,
@@ -60,7 +60,7 @@ class CognitoProvisioner(BaseProvisioner):
             resource_type=self.resource_type,
             source_id=env.source_env_name,
             target_id=pool_id,
-            target_arn=f"arn:aws:cognito-idp:{self.region}:{self.account_id}:userpool/{pool_id}",
+            target_arn=f"arn:aws:cognito-idp:{self.target_region}:{self.account_id}:userpool/{pool_id}",
             metadata={
                 "app_client_id": app_client_id,
                 "pool_name": pool_name,
@@ -80,6 +80,13 @@ class CognitoProvisioner(BaseProvisioner):
 
     @retry(max_attempts=3, delay_seconds=3.0)
     def _create_pool(self, idp: object, pool_name: str, env: EnvironmentModel) -> str:
+        # SES ARN for production email sending (avoids Cognito default 50/day limit)
+        ses_source_arn = os.environ.get(
+            "SES_SOURCE_ARN",
+            "arn:aws:ses:eu-central-1:215116348101:identity/act1@alliancecaretech.com",
+        )
+        ses_from_email = os.environ.get("SES_FROM_EMAIL", "act1@alliancecaretech.com")
+
         resp = idp.create_user_pool(  # type: ignore[attr-defined]
             PoolName=pool_name,
             AutoVerifiedAttributes=["email"],
@@ -94,6 +101,34 @@ class CognitoProvisioner(BaseProvisioner):
                     "RequireSymbols": False,
                 }
             },
+            # Use SES for reliable email delivery (no 50/day sandbox limit)
+            EmailConfiguration={
+                "EmailSendingAccount": "DEVELOPER",
+                "SourceArn": ses_source_arn,
+                "From": ses_from_email,
+            },
+            # Custom attributes required by the Assess React frontend (Signup.tsx)
+            # Auth.signUp sends: custom:firstName, custom:lastName, custom:phone
+            Schema=[
+                {
+                    "Name": "firstName",
+                    "AttributeDataType": "String",
+                    "Mutable": True,
+                    "StringAttributeConstraints": {"MinLength": "0", "MaxLength": "256"},
+                },
+                {
+                    "Name": "lastName",
+                    "AttributeDataType": "String",
+                    "Mutable": True,
+                    "StringAttributeConstraints": {"MinLength": "0", "MaxLength": "256"},
+                },
+                {
+                    "Name": "phone",
+                    "AttributeDataType": "String",
+                    "Mutable": True,
+                    "StringAttributeConstraints": {"MinLength": "0", "MaxLength": "32"},
+                },
+            ],
             UserPoolTags={
                 "Environment": env.target_env_name,
                 "ManagedBy": "CloningPlatform",
@@ -117,6 +152,16 @@ class CognitoProvisioner(BaseProvisioner):
                     "ALLOW_USER_SRP_AUTH",
                     "ALLOW_ADMIN_USER_PASSWORD_AUTH",
                 ],
+                # Required: custom attributes must be explicitly listed for R/W
+                # The Assess frontend (Signup.tsx) writes: custom:firstName, custom:lastName, custom:phone
+                WriteAttributes=[
+                    "email", "given_name", "family_name", "name", "phone_number",
+                    "custom:firstName", "custom:lastName", "custom:phone",
+                ],
+                ReadAttributes=[
+                    "email", "given_name", "family_name", "name", "phone_number", "sub",
+                    "custom:firstName", "custom:lastName", "custom:phone",
+                ],
             )
             client_id: str = resp["UserPoolClient"]["ClientId"]
             self.logger.info("App Client created", extra={"client_id": client_id})
@@ -135,7 +180,12 @@ class CognitoProvisioner(BaseProvisioner):
         pool_id: str,
         env: EnvironmentModel,
     ) -> tuple[str, str, str]:
-        """Create a default admin user with a permanent password."""
+        """Create a default admin user with a temporary password that must be changed on first login.
+
+        Using Permanent=False keeps the user in FORCE_CHANGE_PASSWORD status so the
+        Amplify frontend prompts the Super User to set a new password on first sign-in,
+        satisfying the QA requirement: "Super User is prompted to change password on first login".
+        """
         email = env.contact_email or f"admin@{env.target_env_name}.com"
         credentials_secret_name = f"{env.target_env_name}/admin-bootstrap"
         password = self._get_admin_password(sm, credentials_secret_name)
@@ -162,11 +212,14 @@ class CognitoProvisioner(BaseProvisioner):
         if sub_uuid:
             self._link_dynamodb_user(env, sub_uuid)
 
+        # Permanent=False → Cognito status stays FORCE_CHANGE_PASSWORD.
+        # The frontend will intercept signInStep == "CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED"
+        # and show the change-password form on the very first login.
         idp.admin_set_user_password(  # type: ignore[attr-defined]
             UserPoolId=pool_id,
             Username=email,
             Password=password,
-            Permanent=True,
+            Permanent=False,
         )
         self._store_admin_credentials(sm, credentials_secret_name, email, password, env)
         return email, password, credentials_secret_name
@@ -176,7 +229,7 @@ class CognitoProvisioner(BaseProvisioner):
         normalized = re.sub(r"[^A-Z0-9]", "", env.target_env_name.upper())
         staff_id = f"{normalized[:12] or 'TENANT'}-ADMIN"
         try:
-            ddb = self.get_client("dynamodb")
+            ddb = self.get_source_client("dynamodb") # Linking in control plane shared DB
             ddb.update_item(
                 TableName="catEncounter_StaffTable",
                 Key={"staffId": {"S": staff_id}},
@@ -189,7 +242,7 @@ class CognitoProvisioner(BaseProvisioner):
     @retry(max_attempts=3, delay_seconds=2.0)
     def _create_identity_pool(self, idp: object, user_pool_id: str, app_client_id: str, pool_name: str, env: EnvironmentModel) -> str:
         """Create a Cognito Identity Pool linked to the new User Pool."""
-        client = self.get_client("cognito-identity")
+        client = self.get_target_client("cognito-identity")
         identity_pool_name = pool_name.replace("-", "_")  # Identity pools use underscores often
 
         # Check if exists
@@ -204,7 +257,7 @@ class CognitoProvisioner(BaseProvisioner):
 
         # Create new
         self.logger.info("Creating new identity pool", extra={"identity_pool_name": identity_pool_name})
-        provider_name = f"cognito-idp.{self.region}.amazonaws.com/{user_pool_id}"
+        provider_name = f"cognito-idp.{self.target_region}.amazonaws.com/{user_pool_id}"
         
         response = client.create_identity_pool(  # type: ignore[attr-defined]
             IdentityPoolName=identity_pool_name,
@@ -225,9 +278,9 @@ class CognitoProvisioner(BaseProvisioner):
 
     @retry(max_attempts=3, delay_seconds=2.0)
     def _setup_identity_pool_roles(self, env: EnvironmentModel, pool_id: str) -> None:
-        """Create IAM roles and attach them to the Identity Pool."""
-        iam = self.get_client("iam")
-        cognito_id = self.get_client("cognito-identity")
+        """Create IAM roles and attach them to the Identity Pool with S3 storage permissions."""
+        iam = self.get_target_client("iam")
+        cognito_id = self.get_target_client("cognito-identity")
         
         import json
         
@@ -251,7 +304,7 @@ class CognitoProvisioner(BaseProvisioner):
                     AssumeRolePolicyDocument=json.dumps(trust_policy)
                 )
                 self.logger.info(f"Created {role_type} role", extra={"role_name": role_name})
-                return resp["Role"]["Arn"]
+                role_arn = resp["Role"]["Arn"]
             except iam.exceptions.EntityAlreadyExistsException:
                 resp = iam.get_role(RoleName=role_name)
                 self.logger.info(f"Reusing existing {role_type} role", extra={"role_name": role_name})
@@ -261,7 +314,46 @@ class CognitoProvisioner(BaseProvisioner):
                     RoleName=role_name,
                     PolicyDocument=json.dumps(trust_policy)
                 )
-                return resp["Role"]["Arn"]
+                role_arn = resp["Role"]["Arn"]
+
+            # Attach S3 storage permissions to authenticated role for Amplify Storage
+            if role_type == "authenticated":
+                s3_bucket = f"healthy-aging-buckets-test-{self.account_id}-{self.target_region}-an"
+                s3_policy = {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "Resource": [
+                                f"arn:aws:s3:::{s3_bucket}/*"
+                            ]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": ["s3:ListBucket"],
+                            "Resource": [f"arn:aws:s3:::{s3_bucket}"]
+                        }
+                    ]
+                }
+                try:
+                    iam.put_role_policy(
+                        RoleName=role_name,
+                        PolicyName="AmplifyStoragePolicy",
+                        PolicyDocument=json.dumps(s3_policy)
+                    )
+                    self.logger.info("Attached AmplifyStoragePolicy to authenticated role", extra={"role_name": role_name})
+                except Exception as e:
+                    self.logger.warning(f"Could not attach AmplifyStoragePolicy to {role_name}: {e}")
+
+                # Also ensure the storage bucket has CORS configured for file uploads
+                self._ensure_storage_bucket_cors(s3_bucket)
+
+            return role_arn
                 
         auth_role_arn = create_role("authenticated")
         unauth_role_arn = create_role("unauthenticated")
@@ -277,6 +369,27 @@ class CognitoProvisioner(BaseProvisioner):
             self.logger.info("Attached IAM roles to identity pool", extra={"identity_pool_id": pool_id})
         except Exception as e:
             self.logger.warning(f"Failed to set identity pool roles: {e}")
+
+    def _ensure_storage_bucket_cors(self, bucket_name: str) -> None:
+        """Configure CORS on the shared storage bucket so browser uploads succeed."""
+        try:
+            s3 = self.get_target_client("s3")
+            cors_rules = [
+                {
+                    "AllowedHeaders": ["*"],
+                    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+                    "AllowedOrigins": ["*"],
+                    "ExposeHeaders": ["ETag"],
+                    "MaxAgeSeconds": 3600,
+                }
+            ]
+            s3.put_bucket_cors(
+                Bucket=bucket_name,
+                CORSConfiguration={"CORSRules": cors_rules},
+            )
+            self.logger.info("Configured CORS on storage bucket", extra={"bucket": bucket_name})
+        except Exception as e:
+            self.logger.warning(f"Could not configure CORS on storage bucket {bucket_name}: {e}")
 
     def _find_existing_client(self, idp: object, pool_id: str, client_name: str) -> str:
         clients = idp.list_user_pool_clients(  # type: ignore[attr-defined]
@@ -345,7 +458,7 @@ class CognitoProvisioner(BaseProvisioner):
             sm.put_secret_value(SecretId=secret_name, SecretString=payload)  # type: ignore[attr-defined]
 
     def validate(self, record: ResourceRecord) -> bool:
-        idp = self.get_client("cognito-idp")
+        idp = self.get_target_client("cognito-idp")
         try:
             idp.describe_user_pool(UserPoolId=record.target_id)
             return True

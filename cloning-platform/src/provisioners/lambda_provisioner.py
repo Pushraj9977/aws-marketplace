@@ -21,10 +21,11 @@ class LambdaProvisioner(BaseProvisioner):
     resource_type = ResourceType.LAMBDA_FUNCTION
 
     def _create(self, env: EnvironmentModel) -> ResourceRecord:
-        lam = self.get_client("lambda")
+        lam = self.get_target_client("lambda")
+        source_lam = self.get_source_client("lambda")
 
         # Discover source functions
-        source_functions = self._list_source_functions(lam, env.source_env_name)
+        source_functions = self._list_source_functions(source_lam, env.source_env_name)
         if not source_functions:
             raise SourceResourceNotFoundError(
                 f"No Lambda functions found matching source env: {env.source_env_name}",
@@ -48,7 +49,7 @@ class LambdaProvisioner(BaseProvisioner):
 
                 # Download source package
                 zip_path = Path(tmpdir) / f"{target_name}.zip"
-                source_cfg = self._download_package(lam, source_name, zip_path)
+                source_cfg = self._download_package(source_lam, source_name, zip_path)
 
                 # Create new function
                 self._create_function(lam, source_cfg, target_name, zip_path, env)
@@ -63,7 +64,7 @@ class LambdaProvisioner(BaseProvisioner):
             resource_type=self.resource_type,
             source_id=env.source_env_name,
             target_id=",".join(all_targets),
-            target_arn=build_lambda_arn(self.region, self.account_id, all_targets[0]) if all_targets else "",
+            target_arn=build_lambda_arn(self.target_region, self.account_id, all_targets[0]) if all_targets else "",
             metadata={"created": created, "skipped": skipped},
         )
 
@@ -137,22 +138,38 @@ class LambdaProvisioner(BaseProvisioner):
         # For the initial release, tables are shared (same name) but injected via env var
         # so future per-tenant tables can be created by the DynamoDB provisioner and
         # inserted into env.dynamodb_table_names without changing this code.
+        # Resolve the VALID_API_KEY from Secrets Manager (created by SecretsProvisioner)
+        valid_api_key = self._get_secret_api_key(env)
+
+        # S3 bucket name is account-scoped — build it from the current account ID
+        s3_bucket = f"healthy-aging-buckets-test-{self.account_id}-{self.target_region}-an"
+
         overrides = {
             "ENV": env.target_env_name,
             "ENV_NAME": env.target_env_name,
-            "REGION": self.region,
+            "REGION": self.target_region,
             "USER_POOL_ID": env.user_pool_id,
             "APP_CLIENT_ID": env.app_client_id,
             # Secret name — runtime secret lookup
             "SECRET_NAME": env.secret_name,
             "SECRET_MANAGER_KEY": "HealthyLivingProd/catalyst/KeyJune2025",
-            "SECRET_ACCESS_KEY_REGION": self.region,
+            "SECRET_ACCESS_KEY_REGION": "me-central-1",
+            "SECRET_KEY": "9f2d4a7c3b1e5f8a6c0d9e743f12b6a8e4c5d7f9a0b3c2d1e6f8a7c9b0d4e3f",
+            "DYNAMODB_REGION": env.source_region,
+            # API key — must match what Assess frontend sends in x-api-key header
+            "VALID_API_KEY": valid_api_key,
             # Cognito / Frontend identifiers
             "NEXT_PUBLIC_USER_POOL_ID": env.user_pool_id,
-            "NEXT_PUBLIC_CDN_URL": "https://d3kpamwwj9ilmr.cloudfront.net",
-            "NEXT_PUBLIC_S3Bucket": "healthy-aging-buckets-frankfurt-538594436951-eu-central-1-an",
+            "NEXT_PUBLIC_CDN_URL": "https://d34lhh9be61lrg.cloudfront.net",
+            # Build S3 bucket name dynamically so it always points to THIS account
+            "NEXT_PUBLIC_S3Bucket": s3_bucket,
+            "S3_BUCKET": s3_bucket,
+            "BUCKET_NAME": s3_bucket,
+            "STORAGE_BUCKET": s3_bucket,
             # DynamoDB table names — shared across all environments (per audio update)
             "CatEncounter_Users_Table": "CatEncounter_Users_Table",
+            "TableName": "CatEncounter_Users_Table",
+            "NEXT_PUBLIC_Users_Table": "CatEncounter_Users_Table",
             "CatEncounter_Membership_Table": "catEncounter_Membership_Table",
             "CatEncounter_StaffTable": "catEncounter_StaffTable",
             "Thought_Table": "Thought_Table",
@@ -167,6 +184,8 @@ class LambdaProvisioner(BaseProvisioner):
             "CatEncounter_RecommendedEvent": "CatEncounter_RecommendedEvent",
             "catEncourageStaffAssignments": "catEncourageStaffAssignments",
             "Catalyst_CompConfig": "Catalyst_CompConfig",
+            # backendApi reads Engage_CompConfig for org config lookups — map it to the shared table
+            "Engage_CompConfig": "Catalyst_CompConfig",
             "memberAssessments": "memberAssessments",
             "memberPlans": "memberPlans",
             "FeelingMeter": "FeelingMeter",
@@ -186,8 +205,29 @@ class LambdaProvisioner(BaseProvisioner):
         waiter = lam.get_waiter("function_updated_v2")  # type: ignore[attr-defined]
         waiter.wait(FunctionName=target_name)
 
+    def _get_secret_api_key(self, env: EnvironmentModel) -> str:
+        """Read the VALID_API_KEY from the tenant's Secrets Manager secret."""
+        try:
+            sm = self.get_target_client("secretsmanager")
+            resp = sm.get_secret_value(SecretId=env.secret_name)  # type: ignore[attr-defined]
+            raw = resp.get("SecretString", "").strip()
+            if raw:
+                try:
+                    import json as _json
+                    payload = _json.loads(raw)
+                    if isinstance(payload, dict):
+                        return payload.get("VALID_API_KEY") or payload.get("api_key") or raw
+                except Exception:
+                    pass
+                return raw
+        except Exception as exc:
+            self.logger.warning(f"Could not retrieve VALID_API_KEY from secret: {exc}")
+        # Fallback: generate a stable key from the secret name so it is consistent
+        import hashlib
+        return hashlib.sha256(env.secret_name.encode()).hexdigest()[:64]
+
     def validate(self, record: ResourceRecord) -> bool:
-        lam = self.get_client("lambda")
+        lam = self.get_target_client("lambda")
         first_fn = (record.target_id or "").split(",")[0]
         if not first_fn:
             return True

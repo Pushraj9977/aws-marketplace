@@ -57,8 +57,11 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         sub_mgr.mark_active(env.reg_token, environment_id)
         state_mgr.update_status(environment_id, EnvironmentStatus.ACTIVE)
 
-    # Publish notification
+    # Publish admin notification via SNS
     _publish_notification(env, html_url, json_url)
+
+    # Send customer welcome email via SES
+    _send_customer_welcome_email(env, html_url)
 
     return {"html_url": html_url, "json_url": json_url}
 
@@ -128,3 +131,81 @@ def _publish_notification(
         Message=message,
     )
     logger.info("SNS notification published", extra={"topic": topic_arn})
+
+
+def _send_customer_welcome_email(env: EnvironmentModel, html_url: str) -> None:
+    """Send HTML welcome email to the customer using AWS SES."""
+    if not config.ses_sender_email:
+        logger.warning("No SES sender email configured — skipping customer welcome email")
+        return
+
+    admin_email = env.contact_email or f"admin@{env.target_env_name}.com"
+    
+    # 1. Fetch admin temporary password from Secrets Manager
+    sm = boto3.client("secretsmanager", region_name=config.region)
+    secret_name = f"{env.target_env_name}/admin-bootstrap"
+    try:
+        resp = sm.get_secret_value(SecretId=secret_name)
+        payload = json.loads(resp.get("SecretString", "{}"))
+        temp_password = payload.get("admin_password", "[Contact Support for Password]")
+    except Exception as e:
+        logger.error(f"Could not fetch temp password from {secret_name}", exc_info=e)
+        temp_password = "[Contact Support for Password]"
+
+    # 2. Build Email Content
+    assess_url = env.assess_url or f"http://catalyst-assess-{env.target_env_name}.s3-website.{config.region}.amazonaws.com"
+    staff_url = f"https://{env.target_env_name}.{env.amplify_app_id}.amplifyapp.com"
+    subject = f"Welcome to Catalyst! Your Environment is Ready"
+    
+    body_html = f"""
+    <html>
+    <head></head>
+    <body style="font-family: Arial, sans-serif; color: #333;">
+        <h2>Welcome to Catalyst, {env.company_name}!</h2>
+        <p>Your dedicated multi-tenant environment has been successfully provisioned.</p>
+        
+        <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #117D70; margin: 20px 0;">
+            <h3>Access Your Portals</h3>
+            <p><strong>Assess Portal (S3):</strong> <a href="{assess_url}">{assess_url}</a></p>
+            <p><strong>Staff Portal (Amplify):</strong> <a href="{staff_url}">{staff_url}</a></p>
+            <br/>
+            <p><strong>Admin Email:</strong> {admin_email}</p>
+            <p><strong>Temporary Password:</strong> {temp_password}</p>
+        </div>
+        
+        <p><i>Note: You will be required to change your password upon first login.</i></p>
+        
+        <hr/>
+        <p style="font-size: 12px; color: #666;">This is an automated message. If you have any questions, please contact support.</p>
+    </body>
+    </html>
+    """
+
+    body_text = (
+        f"Welcome to Catalyst, {env.company_name}!\n\n"
+        f"Your dedicated multi-tenant environment has been successfully provisioned.\n\n"
+        f"Access Your Portals\n"
+        f"Assess Portal: {assess_url}\n"
+        f"Staff Portal: {staff_url}\n"
+        f"Admin Email: {admin_email}\n"
+        f"Temporary Password: {temp_password}\n\n"
+        f"Note: You will be required to change your password upon first login.\n"
+    )
+
+    # 3. Send Email via SES
+    ses = boto3.client("ses", region_name=config.region)
+    try:
+        ses.send_email(
+            Source=config.ses_sender_email,
+            Destination={'ToAddresses': [admin_email]},
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {
+                    'Html': {'Data': body_html, 'Charset': 'UTF-8'},
+                    'Text': {'Data': body_text, 'Charset': 'UTF-8'}
+                }
+            }
+        )
+        logger.info("Welcome email sent via SES", extra={"to": admin_email})
+    except Exception as e:
+        logger.error("Failed to send welcome email via SES", exc_info=e)

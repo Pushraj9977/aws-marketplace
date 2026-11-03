@@ -58,15 +58,15 @@ def test_marketplace_register_handler_resolves_token_and_starts_subscriber_flow(
             "customer_aws_account_id": "123456789012",
         }
 
-    def fake_subscriber_handler(event, context):
-        captured["payload"] = json.loads(event["body"])
-        return {
-            "statusCode": 200,
-            "body": json.dumps({"message": "Provisioning started"}),
+    def fake_put(self, subscriber):
+        captured["payload"] = {
+            "reg_token": subscriber.reg_token,
+            "company_name": subscriber.company_name,
+            "contact_email": subscriber.contact_email,
         }
 
+    monkeypatch.setattr("src.state.subscriber_state_manager.SubscriberStateManager.put", fake_put)
     monkeypatch.setattr(marketplace_landing, "_resolve_customer", fake_resolve)
-    monkeypatch.setattr(marketplace_landing.marketplace_subscriber, "handler", fake_subscriber_handler)
 
     response = marketplace_landing.register_handler(
         {

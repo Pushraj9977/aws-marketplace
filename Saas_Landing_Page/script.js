@@ -1,28 +1,17 @@
 const form = document.getElementsByClassName('form-signin')[0];
-const statusNode = document.getElementById('status');
-const bodyConfig = document.body.dataset.apiBaseUrl || '';
-const apiBaseUrl = (window.LANDING_API_BASE_URL || bodyConfig).replace(/\/$/, '');
-const resolveUrl = `${apiBaseUrl}/marketplace/resolve`;
-const registerUrl = `${apiBaseUrl}/marketplace/register`;
-let resolvedCustomer = null;
-
 const showAlert = (cssClass, message) => {
   const html = `
-    <div class="alert alert-${cssClass} alert-dismissible" role="alert">
-        <strong>${message}</strong>
-        <button class="close" type="button" data-dismiss="alert" aria-label="Close">
+    <div class="alert alert-${cssClass} alert-dismissible" role="alert" style="max-height: 400px; overflow-y: auto; text-align: left;">
+        <div>${message}</div>
+        <button class="close" type="button" data-dismiss="alert" aria-label="Close" style="position: absolute; right: 15px; top: 10px;">
             <span aria-hidden="true">×</span>
         </button>
     </div>`;
-  document.querySelector('#alert').innerHTML += html;
-};
-const setStatus = (message) => {
-  statusNode.textContent = message;
+  document.querySelector('#alert').innerHTML = html;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 const formToJSON = (elements) => [].reduce.call(elements, (data, element) => {
-  if (element.name) {
-    data[element.name] = element.value;
-  }
+  data[element.name] = element.value;
   return data;
 }, {});
 const getUrlParameter = (name) => {
@@ -31,68 +20,44 @@ const getUrlParameter = (name) => {
   const results = regex.exec(location.search);
   return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 };
-const regToken = getUrlParameter('x-amzn-marketplace-token');
-
-const postJson = async (url, payload) => {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(body.error || `Request failed with status ${response.status}`);
-  }
-  return body;
-};
-
-const verifyMarketplaceToken = async () => {
-  if (!regToken) {
-    showAlert('danger', 'Registration token missing. Return to AWS Marketplace and launch setup again.');
-    setStatus('Waiting for a valid Marketplace token.');
-    form.querySelector('button[type="submit"]').disabled = true;
-    return;
-  }
-
-  try {
-    setStatus('Verifying your AWS Marketplace subscription...');
-    const result = await postJson(resolveUrl, { marketplace_token: regToken });
-    resolvedCustomer = result.customer;
-    form.querySelector('button[type="submit"]').disabled = false;
-    setStatus(`Subscription verified for product ${resolvedCustomer.product_code}.`);
-    showAlert('success', 'AWS Marketplace subscription verified. You can finish onboarding below.');
-  } catch (error) {
-    form.querySelector('button[type="submit"]').disabled = true;
-    setStatus('We could not verify the AWS Marketplace token.');
-    showAlert('danger', error.message);
-  }
-};
-
-const handleFormSubmit = async (event) => {
+const handleFormSubmit = (event) => {
   event.preventDefault();
-  if (!resolvedCustomer) {
-    showAlert('danger', 'Marketplace subscription has not been verified yet.');
-    return;
-  }
-
-  try {
+  const regToken = getUrlParameter('x-amzn-marketplace-token');
+  if (!regToken) {
+    showAlert('danger',
+      'Registration Token Missing. Please go to AWS Marketplace and follow the instructions to set up your account!');
+  } else {
     const data = formToJSON(form.elements);
+    // API Gateway expects "marketplace_token" instead of "regToken"
     data.marketplace_token = regToken;
-    setStatus('Starting tenant provisioning...');
-    const result = await postJson(registerUrl, data);
-    setStatus('Provisioning started successfully.');
-    showAlert(
-      'success',
-      result.message || 'Your environment is being built. We will email you when it is ready.'
-    );
-  } catch (error) {
-    setStatus('Provisioning could not be started.');
-    showAlert('danger', error.message);
+
+    // API Call to the new Serverless API Gateway endpoint
+    const lambdaUrl = 'https://penuu7szkh.execute-api.eu-central-1.amazonaws.com/Prod/marketplace/register/';
+    
+    fetch(lambdaUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    })
+    .then(async response => {
+      if (response.ok) {
+         showAlert('primary', "Registration successful! Environment provisioning has started.");
+      } else {
+         const errData = await response.json().catch(()=>({}));
+         showAlert('danger', "Error during registration: " + (errData.error || response.status));
+      }
+      console.log('API Gateway registration status:', response.status);
+    })
+    .catch(error => {
+      showAlert('danger', "Network error occurred.");
+      console.error('API Gateway registration error:', error);
+    });
   }
 };
-
 form.addEventListener('submit', handleFormSubmit);
-form.querySelector('button[type="submit"]').disabled = true;
-verifyMarketplaceToken();
+const regToken = getUrlParameter('x-amzn-marketplace-token');
+if (!regToken) {
+  showAlert('danger', 'Registration Token Missing. Please go to AWS Marketplace and follow the instructions to set up your account!');
+}

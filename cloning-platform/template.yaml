@@ -2,9 +2,14 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: AWS Environment Cloning Platform
 
+Parameters:
+  SubscriberTableStreamArn:
+    Type: String
+    Description: ARN of the DynamoDB Stream for the MarketplaceSubscribers table
+
 Globals:
   Function:
-    Runtime: python3.12
+    Runtime: python3.13
     Timeout: 900
     MemorySize: 1024
     Environment:
@@ -91,6 +96,13 @@ Resources:
             Parameters:
               step: PROVISION_API_GATEWAY
               environment.$: "$.environment"
+            Next: ProvisionAssessFrontend
+          ProvisionAssessFrontend:
+            Type: Task
+            Resource: !GetAtt PipelineWorkerFunction.Arn
+            Parameters:
+              step: PROVISION_S3_FRONTEND
+              environment.$: "$.environment"
             Next: ProvisionAmplify
           ProvisionAmplify:
             Type: Task
@@ -142,23 +154,35 @@ Resources:
         - StepFunctionsExecutionPolicy:
             StateMachineName: !GetAtt CloningStateMachine.Name
       Events:
-        ApiEvent:
-          Type: Api
+        StreamEvent:
+          Type: DynamoDB
           Properties:
-            Path: /register
-            Method: post
+            Stream: !Ref SubscriberTableStreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 1
+            FilterCriteria:
+              Filters:
+                - Pattern: '{"eventName": ["INSERT"]}'
 
   MarketplaceLandingFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
       Handler: src.handlers.marketplace_landing.resolve_handler
+      Environment:
+        Variables:
+          SELLER_ROLE_ARN: "arn:aws:iam::613205425102:role/215116348101_access"
       Policies:
         - Statement:
             Effect: Allow
             Action:
               - aws-marketplace:ResolveCustomer
             Resource: "*"
+        - Statement:
+            Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Resource: "arn:aws:iam::*:role/215116348101_access"
         - DynamoDBCrudPolicy:
             TableName: MarketplaceSubscribers
         - DynamoDBCrudPolicy:
@@ -180,12 +204,18 @@ Resources:
       Environment:
         Variables:
           STATE_MACHINE_ARN: !Ref CloningStateMachine
+          SELLER_ROLE_ARN: "arn:aws:iam::613205425102:role/215116348101_access"
       Policies:
         - Statement:
             Effect: Allow
             Action:
               - aws-marketplace:ResolveCustomer
             Resource: "*"
+        - Statement:
+            Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Resource: "arn:aws:iam::*:role/215116348101_access"
         - DynamoDBCrudPolicy:
             TableName: MarketplaceSubscribers
         - DynamoDBCrudPolicy:
@@ -212,13 +242,19 @@ Resources:
     Properties:
       CodeUri: .
       Handler: src.handlers.report_generator.handler
+      Environment:
+        Variables:
+          SES_SENDER_EMAIL: "act1@alliancecaretech.com"
       Policies:
         - AdministratorAccess
+        - Statement:
+            Effect: Allow
+            Action:
+              - ses:SendEmail
+              - ses:SendRawEmail
+            Resource: "*"
 
 Outputs:
-  ApiEndpoint:
-    Description: "API Gateway endpoint URL for POST /register"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/register/"
   StateMachineArn:
     Description: "Cloning Step Function ARN"
     Value: !Ref CloningStateMachine

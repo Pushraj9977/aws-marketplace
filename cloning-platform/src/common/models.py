@@ -56,6 +56,7 @@ class SubscriberModel(BaseModel):
     status: EnvironmentStatus = EnvironmentStatus.PENDING
     target_env_name: str = Field(default="", validation_alias=AliasChoices("target_env_name", "targetEnvName"))
     environment_id: str = Field(default="", validation_alias=AliasChoices("environment_id", "environmentId"))
+    target_region: str = Field(default="", validation_alias=AliasChoices("target_region", "targetRegion"))
 
     @field_validator("company_name")
     @classmethod
@@ -92,7 +93,8 @@ class EnvironmentModel(BaseModel):
     environment_id: str = Field(default_factory=lambda: str(uuid4()))
     source_env_name: str
     target_env_name: str
-    region: str
+    source_region: str
+    target_region: str
     account_id: str
     amplify_app_id: str = ""
     status: EnvironmentStatus = EnvironmentStatus.STARTED
@@ -121,6 +123,8 @@ class EnvironmentModel(BaseModel):
     cloudfront_url: str = ""
     dynamodb_table_names: dict[str, str] = Field(default_factory=dict)
     lambda_function_arns: dict[str, str] = Field(default_factory=dict)
+    # S3-hosted Assess frontend URL (set by S3FrontendProvisioner)
+    assess_url: str = ""
 
     @model_validator(mode="after")
     def set_secret_name(self) -> "EnvironmentModel":
@@ -163,7 +167,8 @@ class ProvisionerInput(BaseModel):
     environment_id: str
     source_env_name: str
     target_env_name: str
-    region: str
+    source_region: str
+    target_region: str
     account_id: str
     amplify_app_id: str = ""
     reg_token: str = ""

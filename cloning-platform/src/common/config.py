@@ -101,6 +101,10 @@ class Config:
     def log_level(self) -> str:
         return os.environ.get("LOG_LEVEL", "INFO").upper()
 
+    @property
+    def ses_sender_email(self) -> str:
+        return os.environ.get("SES_SENDER_EMAIL") or self.get("aws.ses_sender_email", "")
+
 
 @lru_cache(maxsize=1)
 def get_config() -> Config:

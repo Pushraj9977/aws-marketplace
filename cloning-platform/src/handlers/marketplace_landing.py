@@ -63,16 +63,28 @@ def register_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "contact_email": contact_email,
             "contact_person": payload.get("contact_person") or payload.get("contactPerson", ""),
             "contact_phone": payload.get("contact_phone") or payload.get("contactPhone", ""),
+            "target_region": payload.get("target_region") or payload.get("targetRegion") or "",
         }
-        result = marketplace_subscriber.handler(
-            {"body": json.dumps(subscriber_payload)},
-            context,
+        
+        from ..common.config import get_config
+        from ..common.models import SubscriberModel
+        from ..state.subscriber_state_manager import SubscriberStateManager
+
+        config = get_config()
+        subscriber = SubscriberModel(**subscriber_payload)
+        
+        state_mgr = SubscriberStateManager(
+            table_name=config.subscribers_table,
+            region=config.region,
         )
-        result["headers"] = _cors_headers()
-        body = json.loads(result.get("body", "{}"))
-        body["marketplace"] = resolved
-        result["body"] = json.dumps(body)
-        return result
+        state_mgr.put(subscriber)
+        logger.info("Marketplace subscriber written to DynamoDB for token %s", resolved["customer_identifier"])
+
+        return _response(200, {
+            "message": "Marketplace registration successful, provisioning queued.",
+            "reg_token": subscriber.reg_token,
+            "marketplace": resolved
+        })
     except Exception as exc:
         logger.error("Marketplace registration failed: %s", exc)
         return _response(500, {"error": str(exc)})
@@ -98,6 +110,7 @@ def _extract_marketplace_token(event: dict[str, Any], payload: dict[str, Any] | 
 
 
 def _resolve_customer(token: str) -> dict[str, str]:
+    import os
     # Bypass real AWS Marketplace resolution for simulation testing
     if token.startswith("test-"):
         return {
@@ -106,7 +119,23 @@ def _resolve_customer(token: str) -> dict[str, str]:
             "customer_aws_account_id": "000000000000",
         }
         
-    client = boto3.client("meteringmarketplace")
+    seller_role_arn = os.environ.get("SELLER_ROLE_ARN")
+    if seller_role_arn:
+        sts = boto3.client("sts")
+        assumed = sts.assume_role(
+            RoleArn=seller_role_arn,
+            RoleSessionName="MarketplaceResolution"
+        )
+        creds = assumed["Credentials"]
+        client = boto3.client(
+            "meteringmarketplace",
+            aws_access_key_id=creds["AccessKeyId"],
+            aws_secret_access_key=creds["SecretAccessKey"],
+            aws_session_token=creds["SessionToken"],
+        )
+    else:
+        client = boto3.client("meteringmarketplace")
+
     response = client.resolve_customer(RegistrationToken=token)
     return {
         "customer_identifier": response.get("CustomerIdentifier", ""),

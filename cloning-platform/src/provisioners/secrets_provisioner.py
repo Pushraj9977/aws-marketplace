@@ -15,13 +15,14 @@ class SecretsProvisioner(BaseProvisioner):
     resource_type = ResourceType.SECRET
 
     def _create(self, env: EnvironmentModel) -> ResourceRecord:
-        sm = self.get_client("secretsmanager")
+        target_sm = self.get_target_client("secretsmanager")
+        source_sm = self.get_source_client("secretsmanager")
         source_secret_name = f"{env.source_env_name}/app-secret"
         target_secret_name = env.secret_name  # already set to target/app-secret
 
         # Idempotency check
         try:
-            existing = sm.describe_secret(SecretId=target_secret_name)
+            existing = target_sm.describe_secret(SecretId=target_secret_name)
             self.logger.warning(
                 "Secret already exists, reusing",
                 extra={"secret": target_secret_name},
@@ -32,14 +33,14 @@ class SecretsProvisioner(BaseProvisioner):
                 target_id=target_secret_name,
                 target_arn=existing.get("ARN", ""),
             )
-        except sm.exceptions.ResourceNotFoundException:
+        except target_sm.exceptions.ResourceNotFoundException:
             pass
 
         # Fetch source secret value
-        secret_value = self._get_source_value(sm, source_secret_name)
+        secret_value = self._get_source_value(source_sm, source_secret_name)
 
         # Create target secret
-        resp = self._create_secret(sm, target_secret_name, secret_value, env)
+        resp = self._create_secret(target_sm, target_secret_name, secret_value, env)
 
         return ResourceRecord(
             resource_type=self.resource_type,
@@ -77,6 +78,6 @@ class SecretsProvisioner(BaseProvisioner):
 
     @retry(max_attempts=5, delay_seconds=2.0)
     def validate(self, record: ResourceRecord) -> bool:
-        sm = self.get_client("secretsmanager")
-        sm.describe_secret(SecretId=record.target_id)
+        target_sm = self.get_target_client("secretsmanager")
+        target_sm.describe_secret(SecretId=record.target_id)
         return True
