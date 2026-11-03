@@ -1,5 +1,6 @@
 version = 0.1
 
+# Frankfurt (eu-central-1) - original stack
 [default.deploy.parameters]
 stack_name = "ACTTest"
 resolve_s3 = true
@@ -11,3 +12,16 @@ image_repositories = []
 
 [default.global.parameters]
 region = "eu-central-1"
+
+# Ireland (eu-west-1) - replicated stack
+[ireland.deploy.parameters]
+stack_name = "ACTTest-Ireland"
+resolve_s3 = true
+s3_prefix = "ACTTest-Ireland"
+region = "eu-west-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+
+[ireland.global.parameters]
+region = "eu-west-1"
