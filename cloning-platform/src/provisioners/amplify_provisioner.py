@@ -77,13 +77,19 @@ class AmplifyProvisioner(BaseProvisioner):
 
     def _build_env_vars(self, env: EnvironmentModel) -> dict[str, str]:
         s3_bucket = f"healthy-aging-buckets-test-{self.account_id}-{self.target_region}-an"
+        cdn_url = "https://d34lhh9be61lrg.cloudfront.net"
         vars_: dict[str, str] = {
             "ENV_NAME": env.target_env_name,
             "USER_POOL_ID": env.user_pool_id,
             "APP_CLIENT_ID": env.app_client_id,
             "SECRET_NAME": env.secret_name,
             "REGION": self.target_region,
-            "NEXT_PUBLIC_CDN_URL": "https://d34lhh9be61lrg.cloudfront.net",
+            # Both naming conventions — awsService.ts uses NEXT_PUBLIC_CLOUD_FRONT_URL,
+            # other components use NEXT_PUBLIC_CDN_URL. Set both so report/image URLs
+            # never resolve to "undefined/<key>" regardless of branch age.
+            "NEXT_PUBLIC_CLOUD_FRONT_URL": cdn_url,
+            "NEXT_PUBLIC_CDN_URL": cdn_url,
+            # S3 bucket for file uploads (reports, images)
             "NEXT_PUBLIC_S3Bucket": s3_bucket,
             "S3_BUCKET": s3_bucket,
             "STORAGE_BUCKET": s3_bucket,

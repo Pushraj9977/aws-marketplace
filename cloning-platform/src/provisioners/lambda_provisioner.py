@@ -186,6 +186,10 @@ class LambdaProvisioner(BaseProvisioner):
             "Catalyst_CompConfig": "Catalyst_CompConfig",
             # backendApi reads Engage_CompConfig for org config lookups — map it to the shared table
             "Engage_CompConfig": "Catalyst_CompConfig",
+            # Uppercase env var keys — read by backendApi via process.env.MEMBER_ASSESSMENTS
+            "MEMBER_ASSESSMENTS": "memberAssessments",
+            "CatalystEngageBHAResults": "CatalystEngageBHAResults",
+            # Legacy lowercase key (kept for backward compatibility)
             "memberAssessments": "memberAssessments",
             "memberPlans": "memberPlans",
             "FeelingMeter": "FeelingMeter",
