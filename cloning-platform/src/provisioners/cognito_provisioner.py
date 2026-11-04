@@ -278,7 +278,7 @@ class CognitoProvisioner(BaseProvisioner):
 
     @retry(max_attempts=3, delay_seconds=2.0)
     def _setup_identity_pool_roles(self, env: EnvironmentModel, pool_id: str) -> None:
-        """Create IAM roles and attach them to the Identity Pool."""
+        """Create IAM roles and attach them to the Identity Pool with S3 storage permissions."""
         iam = self.get_target_client("iam")
         cognito_id = self.get_target_client("cognito-identity")
         
@@ -304,7 +304,7 @@ class CognitoProvisioner(BaseProvisioner):
                     AssumeRolePolicyDocument=json.dumps(trust_policy)
                 )
                 self.logger.info(f"Created {role_type} role", extra={"role_name": role_name})
-                return resp["Role"]["Arn"]
+                role_arn = resp["Role"]["Arn"]
             except iam.exceptions.EntityAlreadyExistsException:
                 resp = iam.get_role(RoleName=role_name)
                 self.logger.info(f"Reusing existing {role_type} role", extra={"role_name": role_name})
@@ -314,7 +314,46 @@ class CognitoProvisioner(BaseProvisioner):
                     RoleName=role_name,
                     PolicyDocument=json.dumps(trust_policy)
                 )
-                return resp["Role"]["Arn"]
+                role_arn = resp["Role"]["Arn"]
+
+            # Attach S3 storage permissions to authenticated role for Amplify Storage
+            if role_type == "authenticated":
+                s3_bucket = f"healthy-aging-buckets-test-{self.account_id}-{self.target_region}-an"
+                s3_policy = {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "Resource": [
+                                f"arn:aws:s3:::{s3_bucket}/*"
+                            ]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": ["s3:ListBucket"],
+                            "Resource": [f"arn:aws:s3:::{s3_bucket}"]
+                        }
+                    ]
+                }
+                try:
+                    iam.put_role_policy(
+                        RoleName=role_name,
+                        PolicyName="AmplifyStoragePolicy",
+                        PolicyDocument=json.dumps(s3_policy)
+                    )
+                    self.logger.info("Attached AmplifyStoragePolicy to authenticated role", extra={"role_name": role_name})
+                except Exception as e:
+                    self.logger.warning(f"Could not attach AmplifyStoragePolicy to {role_name}: {e}")
+
+                # Also ensure the storage bucket has CORS configured for file uploads
+                self._ensure_storage_bucket_cors(s3_bucket)
+
+            return role_arn
                 
         auth_role_arn = create_role("authenticated")
         unauth_role_arn = create_role("unauthenticated")
@@ -330,6 +369,27 @@ class CognitoProvisioner(BaseProvisioner):
             self.logger.info("Attached IAM roles to identity pool", extra={"identity_pool_id": pool_id})
         except Exception as e:
             self.logger.warning(f"Failed to set identity pool roles: {e}")
+
+    def _ensure_storage_bucket_cors(self, bucket_name: str) -> None:
+        """Configure CORS on the shared storage bucket so browser uploads succeed."""
+        try:
+            s3 = self.get_target_client("s3")
+            cors_rules = [
+                {
+                    "AllowedHeaders": ["*"],
+                    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+                    "AllowedOrigins": ["*"],
+                    "ExposeHeaders": ["ETag"],
+                    "MaxAgeSeconds": 3600,
+                }
+            ]
+            s3.put_bucket_cors(
+                Bucket=bucket_name,
+                CORSConfiguration={"CORSRules": cors_rules},
+            )
+            self.logger.info("Configured CORS on storage bucket", extra={"bucket": bucket_name})
+        except Exception as e:
+            self.logger.warning(f"Could not configure CORS on storage bucket {bucket_name}: {e}")
 
     def _find_existing_client(self, idp: object, pool_id: str, client_name: str) -> str:
         clients = idp.list_user_pool_clients(  # type: ignore[attr-defined]

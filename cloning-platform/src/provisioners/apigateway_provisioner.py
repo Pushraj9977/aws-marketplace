@@ -1,6 +1,8 @@
 """
 apigateway_provisioner.py — Clone REST API Gateways, one per Lambda function.
 Uses wildcard {proxy+} integration pointing to each cloned Lambda.
+Automatically configures CORS (OPTIONS MOCK integration and Gateway Responses)
+so frontend callers on CloudFront / Amplify domains never encounter CORS blocks.
 """
 from __future__ import annotations
 
@@ -40,12 +42,18 @@ class APIGatewayProvisioner(BaseProvisioner):
             root_id = self._get_root_resource_id(apigw, api_id)
             proxy_id = self._add_proxy_resource(apigw, api_id, root_id)
             self._add_lambda_integration(apigw, api_id, proxy_id, fn_arn)
+
+            # Enable CORS on both root and proxy resources, and add Gateway Responses
+            self._enable_cors(apigw, api_id, root_id)
+            self._enable_cors(apigw, api_id, proxy_id)
+            self._add_gateway_responses(apigw, api_id)
+
             self._deploy_stage(apigw, api_id, env.target_env_name)
             self._grant_invoke(lam, fn_name, api_id)
 
             api_url = build_api_url(api_id, self.target_region, env.target_env_name)
             api_urls[fn_name] = api_url
-            self.logger.info("API wired", extra={"api_url": api_url})
+            self.logger.info("API wired with full CORS", extra={"api_url": api_url})
 
         # Inject API URLs into env for downstream consumers
         env.api_urls.update(api_urls)
@@ -123,6 +131,77 @@ class APIGatewayProvisioner(BaseProvisioner):
             integrationHttpMethod="POST",
             uri=uri,
         )
+
+    def _enable_cors(self, apigw: object, api_id: str, resource_id: str) -> None:
+        """Add OPTIONS method with MOCK integration and standard CORS headers."""
+        try:
+            # Delete any existing OPTIONS method to remain idempotent
+            try:
+                apigw.delete_method(restApiId=api_id, resourceId=resource_id, httpMethod="OPTIONS")
+            except Exception:
+                pass
+
+            apigw.put_method(
+                restApiId=api_id,
+                resourceId=resource_id,
+                httpMethod="OPTIONS",
+                authorizationType="NONE",
+            )
+            apigw.put_integration(
+                restApiId=api_id,
+                resourceId=resource_id,
+                httpMethod="OPTIONS",
+                type="MOCK",
+                requestTemplates={"application/json": '{"statusCode": 200}'},
+            )
+            apigw.put_method_response(
+                restApiId=api_id,
+                resourceId=resource_id,
+                httpMethod="OPTIONS",
+                statusCode="200",
+                responseParameters={
+                    "method.response.header.Access-Control-Allow-Headers": True,
+                    "method.response.header.Access-Control-Allow-Methods": True,
+                    "method.response.header.Access-Control-Allow-Origin": True,
+                },
+            )
+            apigw.put_integration_response(
+                restApiId=api_id,
+                resourceId=resource_id,
+                httpMethod="OPTIONS",
+                statusCode="200",
+                responseParameters={
+                    "method.response.header.Access-Control-Allow-Headers": (
+                        "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Accept'"
+                    ),
+                    "method.response.header.Access-Control-Allow-Methods": "'GET,POST,PUT,DELETE,OPTIONS,PATCH'",
+                    "method.response.header.Access-Control-Allow-Origin": "'*'",
+                },
+            )
+        except Exception as exc:
+            self.logger.warning("Failed to configure OPTIONS CORS", extra={"error": str(exc), "api_id": api_id})
+
+    def _add_gateway_responses(self, apigw: object, api_id: str) -> None:
+        """Add DEFAULT_4XX and DEFAULT_5XX Gateway Responses with CORS headers."""
+        cors_params = {
+            "gatewayresponse.header.Access-Control-Allow-Origin": "'*'",
+            "gatewayresponse.header.Access-Control-Allow-Headers": (
+                "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Accept'"
+            ),
+            "gatewayresponse.header.Access-Control-Allow-Methods": "'GET,POST,PUT,DELETE,OPTIONS,PATCH'",
+        }
+        for resp_type in ("DEFAULT_4XX", "DEFAULT_5XX"):
+            try:
+                apigw.put_gateway_response(
+                    restApiId=api_id,
+                    responseType=resp_type,
+                    responseParameters=cors_params,
+                )
+            except Exception as exc:
+                self.logger.warning(
+                    f"Could not configure Gateway Response {resp_type}: {exc}",
+                    extra={"api_id": api_id},
+                )
 
     @retry(max_attempts=5, delay_seconds=5.0)
     def _deploy_stage(self, apigw: object, api_id: str, stage_name: str) -> None:

@@ -76,12 +76,17 @@ class AmplifyProvisioner(BaseProvisioner):
             return False
 
     def _build_env_vars(self, env: EnvironmentModel) -> dict[str, str]:
+        s3_bucket = f"healthy-aging-buckets-test-{self.account_id}-{self.target_region}-an"
         vars_: dict[str, str] = {
             "ENV_NAME": env.target_env_name,
             "USER_POOL_ID": env.user_pool_id,
             "APP_CLIENT_ID": env.app_client_id,
             "SECRET_NAME": env.secret_name,
             "REGION": self.target_region,
+            "NEXT_PUBLIC_CDN_URL": "https://d34lhh9be61lrg.cloudfront.net",
+            "NEXT_PUBLIC_S3Bucket": s3_bucket,
+            "S3_BUCKET": s3_bucket,
+            "STORAGE_BUCKET": s3_bucket,
         }
         # Inject all API URLs
         for fn_name, url in env.api_urls.items():
@@ -141,9 +146,12 @@ class AmplifyProvisioner(BaseProvisioner):
         engage_url = get_api_url("engageapi")
         bha_url = get_api_url("bhaSession")
         webhook_url = get_api_url("webhook")
+        s3_bucket = f"healthy-aging-buckets-test-{self.account_id}-{self.target_region}-an"
 
         aws_exports_content = f"""const awsmobile = {{
     "aws_project_region": "{self.target_region}",
+    "aws_user_files_s3_bucket": "{s3_bucket}",
+    "aws_user_files_s3_bucket_region": "{self.target_region}",
     "aws_cloud_logic_custom": [
         {{ "name": "backendApi", "endpoint": "{backend_url}", "region": "{self.target_region}" }},
         {{ "name": "staffApi", "endpoint": "{staff_url}", "region": "{self.target_region}" }},
@@ -183,51 +191,52 @@ export default awsmobile;
         resp = amp.create_branch(  # type: ignore[attr-defined]
             appId=app_id,
             branchName=branch_name,
-            stage="DEVELOPMENT",
+            description=f"Branch for {branch_name}",
             framework="Next.js - SSR",
+            stage="PRODUCTION",
+            enableAutoBuild=True,
             environmentVariables=env_vars,
-            tags={
-                "Environment": env.target_env_name,
-                "ManagedBy": "CloningPlatform",
-            },
         )
-        self.logger.info(
-            "Amplify branch created and mapped to GitHub",
-            extra={"branch": branch_name, "app_id": app_id},
-        )
-        return resp.get("branch", {})
+        self.logger.info("Amplify branch created", extra={"branch": branch_name})
+        return resp["branch"]
 
     def _get_github_token(self) -> str:
-        sm = boto3.client("secretsmanager", region_name=self.source_region)
+        """Fetch the GitHub token from Secrets Manager."""
+        sm = self.get_target_client("secretsmanager")
         try:
             resp = sm.get_secret_value(SecretId="cloning-platform/github-token")
-            return resp.get("SecretString", "")
+            return resp.get("SecretString", "").strip()
         except Exception as e:
-            self.logger.warning(f"Failed to retrieve GitHub token: {e}")
+            self.logger.warning(f"Could not fetch GitHub token from Secrets Manager: {e}")
             return ""
 
     def _create_github_branch(self, target_branch: str, source_branch: str = "test") -> None:
+        """Create a new GitHub branch from source_branch so Amplify build has a commit to fetch."""
         token = self._get_github_token()
         if not token:
-            self.logger.warning("No GitHub token available, skipping GitHub branch creation")
+            self.logger.warning("Skipping GitHub branch creation: no token available")
             return
-            
+
         owner = "ACT-INTL"
         repo = "Catalyst-HealthyAging"
         
+        # 1. Get the commit SHA of source_branch
+        ref_url = f"https://api.github.com/repos/{owner}/{repo}/git/ref/heads/{source_branch}"
+        req = urllib.request.Request(ref_url, headers={
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json"
+        })
         try:
-            # 1. Get the SHA of the source branch
-            url = f"https://api.github.com/repos/{owner}/{repo}/git/refs/heads/{source_branch}"
-            req = urllib.request.Request(url, headers={
-                "Authorization": f"token {token}",
-                "Accept": "application/vnd.github.v3+json"
-            })
             with urllib.request.urlopen(req) as response:
                 data = json.loads(response.read().decode())
                 sha = data["object"]["sha"]
-                
-            # 2. Create the new branch pointing to that SHA
-            create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
+        except Exception as e:
+            self.logger.warning(f"Failed to fetch base branch {source_branch} SHA: {e}")
+            return
+
+        # 2. Create the new reference
+        create_url = f"https://api.github.com/repos/{owner}/{repo}/git/refs"
+        try:
             payload = json.dumps({
                 "ref": f"refs/heads/{target_branch}",
                 "sha": sha
