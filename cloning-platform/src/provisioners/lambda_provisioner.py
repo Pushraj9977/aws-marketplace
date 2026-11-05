@@ -125,8 +125,16 @@ class LambdaProvisioner(BaseProvisioner):
         waiter.wait(FunctionName=target_name)
         self.logger.info("Lambda active", extra={"function": target_name})
 
+    @retry(max_attempts=5, delay_seconds=5.0)
     def _inject_env_vars(self, lam: object, target_name: str, env: EnvironmentModel) -> None:
         """Merge source env vars with new environment-specific overrides."""
+        try:
+            # Wait for any in-flight creation/update to complete before reading or updating config
+            waiter = lam.get_waiter("function_updated_v2")  # type: ignore[attr-defined]
+            waiter.wait(FunctionName=target_name)
+        except Exception:
+            pass
+
         try:
             resp = lam.get_function_configuration(FunctionName=target_name)  # type: ignore[attr-defined]
             base_vars = resp.get("Environment", {}).get("Variables", {})
