@@ -1,6 +1,8 @@
 """
 lambda_provisioner.py — Clone Lambda functions from source to target environment.
 Downloads source code package and deploys new functions with updated env vars.
+Preserves all source environment variables (e.g. CF_SIGNED_URL_PRIVATE_KEY) while
+applying per-tenant overrides.
 """
 from __future__ import annotations
 
@@ -51,7 +53,7 @@ class LambdaProvisioner(BaseProvisioner):
                 zip_path = Path(tmpdir) / f"{target_name}.zip"
                 source_cfg = self._download_package(source_lam, source_name, zip_path)
 
-                # Create new function
+                # Create new function with source env vars preserved
                 self._create_function(lam, source_cfg, target_name, zip_path, env)
                 created.append(target_name)
 
@@ -117,6 +119,9 @@ class LambdaProvisioner(BaseProvisioner):
             kwargs["Architectures"] = source_cfg["Architectures"]
         if source_cfg.get("Layers"):
             kwargs["Layers"] = [layer["Arn"] for layer in source_cfg["Layers"]]
+        # Preserve all source environment variables (e.g. CF_SIGNED_URL_PRIVATE_KEY)
+        if source_cfg.get("Environment", {}).get("Variables"):
+            kwargs["Environment"] = {"Variables": dict(source_cfg["Environment"]["Variables"])}
 
         lam.create_function(**kwargs)  # type: ignore[attr-defined]
 
@@ -174,6 +179,9 @@ class LambdaProvisioner(BaseProvisioner):
             "S3_BUCKET": s3_bucket,
             "BUCKET_NAME": s3_bucket,
             "STORAGE_BUCKET": s3_bucket,
+            # BHA Scan Step Function
+            "SAVE_BHA_RESULT_STATE_MACHINE_ARN": f"arn:aws:states:{self.target_region}:{self.account_id}:stateMachine:save-bha-result",
+            "STEP_FUNCTION_REGION": self.target_region,
             # DynamoDB table names — shared across all environments (per audio update)
             "CatEncounter_Users_Table": "CatEncounter_Users_Table",
             "TableName": "CatEncounter_Users_Table",

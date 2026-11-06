@@ -6,6 +6,7 @@ Parameters:
   SubscriberTableStreamArn:
     Type: String
     Description: ARN of the DynamoDB Stream for the MarketplaceSubscribers table
+    Default: "arn:aws:dynamodb:eu-central-1:215116348101:table/MarketplaceSubscribers/stream/2026-09-17T12:07:23.318"
 
 Globals:
   Function:
